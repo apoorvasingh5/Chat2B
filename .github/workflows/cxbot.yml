@@ -1,0 +1,149 @@
+# cxbot — PR conversation trigger (requirement #1) + scanner result production (requirement #3)
+# Phase 3: TruffleHog JSON + optional Checkmarx One SARIF → normalized findings.json artifact.
+name: cxbot
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: cxbot-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  actions: read
+
+jobs:
+  # requirements #1 (trigger guard) and #2 (identity) + Phase 1 reply with dedup;
+  # Phase 4: @cxbot review loads findings (inline TruffleHog rescan) and triages via GitHub Models
+  cxbot:
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != ''
+    runs-on: ubuntu-latest
+    steps:
+      # trusted checkout: default branch config + dependencies, never PR-controlled code
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - id: route
+        name: Route (no side effects)
+        run: node dist/index.js --route-only
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
+      # findings for review/explain/fix: rescan PR head against the default branch
+      - name: Checkout PR head (scan target only)
+        if: steps.route.outputs.needs-findings == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number || github.event.pull_request.number }}/head
+          path: pr
+          fetch-depth: 0
+
+      - name: TruffleHog rescan (PR vs default branch)
+        if: steps.route.outputs.needs-findings == 'true'
+        run: |
+          cd pr
+          BASE=$(git merge-base "origin/${{ github.event.repository.default_branch }}" HEAD)
+          echo "scanning $BASE..HEAD"
+          cd ..
+          docker run --rm -v "$PWD/pr:/tmp" -w /tmp ghcr.io/trufflesecurity/trufflehog:latest \
+            git file:///tmp/ \
+            --since-commit "$BASE" \
+            --branch HEAD \
+            --json --no-update > trufflehog.json || true
+          node dist/analyze.js
+
+      - name: Route and reply
+        run: node dist/index.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CXBOT_MODELS_TOKEN: ${{ secrets.CXBOT_MODELS_TOKEN }}
+          CXBOT_MODEL: ${{ vars.CXBOT_MODEL }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
+  # requirement #3: produce scanner result artifacts for the adapters (Phase 3)
+  scan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      # Cx One credentials are optional: without them only TruffleHog runs.
+      CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
+      CX_TENANT: ${{ secrets.CX_TENANT }}
+      CX_CLIENT_ID: ${{ secrets.CX_CLIENT_ID }}
+      CX_CLIENT_SECRET: ${{ secrets.CX_CLIENT_SECRET }}
+      CX_SCAN_PARAMS: ${{ vars.CX_SCAN_PARAMS || '--report-format sarif' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # TruffleHog JSONL over base..head (same invocation as the official composite
+      # action, but stdout redirected to a file so the adapter can consume it).
+      - name: TruffleHog scan (base..head)
+        run: |
+          docker run --rm -v .:/tmp -w /tmp ghcr.io/trufflesecurity/trufflehog:latest \
+            git file:///tmp/ \
+            --since-commit "${{ github.event.pull_request.base.sha }}" \
+            --branch "${{ github.event.pull_request.head.sha }}" \
+            --json --no-update > trufflehog.json || true
+
+      # Checkmarx One full scan (SAST/SCA/IaC/Secrets) — skipped unless secrets are configured.
+      - name: Checkmarx One scan (SARIF)
+        if: env.CX_CLIENT_ID != ''
+        uses: Checkmarx/ast-github-action@2.3.46
+        with:
+          base_uri: ${{ env.CX_BASE_URI }}
+          cx_tenant: ${{ env.CX_TENANT }}
+          cx_client_id: ${{ env.CX_CLIENT_ID }}
+          cx_client_secret: ${{ env.CX_CLIENT_SECRET }}
+          scan_params: ${{ env.CX_SCAN_PARAMS }}
+
+      - name: Locate Checkmarx SARIF
+        if: env.CX_CLIENT_ID != ''
+        run: |
+          SARIF_PATH=$(find . -name '*.sarif' -not -path './node_modules/*' -print -quit)
+          if [ -n "$SARIF_PATH" ]; then
+            cp "$SARIF_PATH" cxone.sarif
+            echo "using SARIF: $SARIF_PATH"
+          else
+            echo "::warning::no SARIF produced by Checkmarx scan"
+          fi
+
+      # requirement #3 acceptance: adapters parse artifacts → findings.json
+      - name: Normalize scanner results
+        run: node dist/analyze.js
+
+      - name: Upload scanner artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanner-results-${{ github.event.pull_request.head.sha }}
+          path: |
+            trufflehog.json
+            cxone.sarif
+            findings.json
+          if-no-files-found: warn

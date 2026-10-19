@@ -1,0 +1,31 @@
+# CxPRBot repository configuration (modeled on .coderabbit.yaml).
+language: en-US
+profile: balanced
+tone_instructions: ""
+
+scanners:
+  trufflehog: true
+  cxone: true
+  require_verified: false
+
+auto_review:
+  enabled: true
+  drafts: false
+  base_branches: ["^main$", "^release/.*$"]
+  labels: []
+  ignore_usernames: []
+  ignore_author_associations: []
+
+path_filters: ["**", "!**/*.lock", "!**/dist/**", "!**/node_modules/**"]
+
+path_instructions:
+  - path: ".github/workflows/**"
+    instructions: "Flag privileged workflows (pull_request_target, self-hosted runners) and unpinned actions."
+  - path: "src/**"
+    instructions: "Focus on authn/authz, input validation, and secret handling."
+
+deny_fix_paths:
+  - ".github/workflows/**"
+  - "**/*.lock"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"

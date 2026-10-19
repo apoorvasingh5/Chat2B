@@ -1,0 +1,10 @@
+# Identity registry for requirement #2 (identify scanner-of-interest comments).
+# Merged with code defaults in src/identity.ts; reloads as config, not code.
+
+scanner_logins: []
+scanner_login_patterns: []
+body_fingerprints:
+  - "<!-- cr-comment:"
+  - "::error::"
+  - "trufflehog:"
+human_author_associations: ["OWNER", "MEMBER", "COLLABORATOR"]
