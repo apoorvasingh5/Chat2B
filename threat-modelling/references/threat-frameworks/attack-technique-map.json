@@ -1,0 +1,114 @@
+{
+  "_purpose": "Deterministic seed data for scripts/map_attack_techniques.py. Two lookup tables: (1) graph risk-pattern key -> MITRE ATT&CK technique(s), for the 15 algorithmic detectors in scripts/build_graph.py's detect_risk_patterns(); (2) CWE -> CAPEC -> MITRE ATT&CK technique(s), for app-layer weaknesses already named in SKILL.md Sec 11 (SAST Recommendation Agent). This is a curated starter set, not a full import of the authoritative MITRE CAPEC/ATT&CK corpora.",
+  "_confidence_note": "Every entry is labeled 'confidence': \"seed-unverified\". Treat these as a reasoned starting point to review, not certified ground truth. Before relying on this at scale, replace/extend this file from the authoritative public sources: MITRE ATT&CK STIX bundles at https://github.com/mitre/cti, and the MITRE CAPEC database/CWE-CAPEC relationships published at https://capec.mitre.org (CSV/XML export). Do this the same way references/cx-presets-queries/9.7.0_All_queries_by_preset_list.csv is a real vendor export rather than a hand-typed table -- this file should eventually be replaced the same way.",
+  "_usage_note": "Not every finding maps cleanly onto MITRE ATT&CK. ATT&CK models post-compromise adversary behavior (infrastructure, cloud, identity, containers); many app-layer logic weaknesses (e.g. BOLA, business-logic abuse) have no good 1:1 Enterprise technique and are better described with CWE + CAPEC alone. Entries below with \"attack_techniques\": [] and a \"why_no_attack_technique\" field are intentional -- do not force an ID onto them.",
+
+  "graph_risk_patterns": {
+    "internet_exposed_reaches_sensitive_store": {
+      "tactics": ["TA0001 Initial Access", "TA0009 Collection"],
+      "attack_techniques": ["T1190 Exploit Public-Facing Application", "T1530 Data from Cloud Storage"],
+      "confidence": "seed-unverified"
+    },
+    "unauthenticated_trust_boundary_crossing": {
+      "tactics": ["TA0001 Initial Access"],
+      "attack_techniques": ["T1190 Exploit Public-Facing Application"],
+      "confidence": "seed-unverified"
+    },
+    "unknown_authorization_on_api_call": {
+      "tactics": ["TA0004 Privilege Escalation"],
+      "attack_techniques": [],
+      "why_no_attack_technique": "Object/function-level authorization gaps (BOLA/BFLA) are an application-logic weakness with no clean 1:1 Enterprise ATT&CK technique. Cite CWE-862/CWE-863 and CAPEC-1 instead (see cwe_to_capec below).",
+      "confidence": "seed-unverified"
+    },
+    "secret_used_outside_managed_store": {
+      "tactics": ["TA0006 Credential Access"],
+      "attack_techniques": ["T1552 Unsecured Credentials", "T1552.001 Unsecured Credentials: Credentials In Files"],
+      "confidence": "seed-unverified"
+    },
+    "no_secret_store_despite_usage": {
+      "tactics": ["TA0006 Credential Access"],
+      "attack_techniques": ["T1552 Unsecured Credentials"],
+      "confidence": "seed-unverified"
+    },
+    "trust_boundary_crossing_without_encryption": {
+      "tactics": ["TA0006 Credential Access", "TA0009 Collection"],
+      "attack_techniques": ["T1557 Adversary-in-the-Middle"],
+      "confidence": "seed-unverified"
+    },
+    "admin_interface_broadly_exposed": {
+      "tactics": ["TA0001 Initial Access"],
+      "attack_techniques": ["T1190 Exploit Public-Facing Application", "T1078 Valid Accounts"],
+      "confidence": "seed-unverified"
+    },
+    "third_party_receives_sensitive_data": {
+      "tactics": ["TA0010 Exfiltration", "TA0001 Initial Access"],
+      "attack_techniques": ["T1567 Exfiltration Over Web Service", "T1195 Supply Chain Compromise"],
+      "confidence": "seed-unverified"
+    },
+    "mobile_app_direct_database_access": {
+      "tactics": ["TA0006 Credential Access", "TA0001 Initial Access"],
+      "attack_techniques": ["T1552 Unsecured Credentials"],
+      "confidence": "seed-unverified"
+    },
+    "frontend_bypasses_gateway_to_internal_service": {
+      "tactics": [],
+      "attack_techniques": [],
+      "why_no_attack_technique": "This is a control-architecture gap (bypassing a centralized gateway's authN/Z, rate limiting, monitoring), not an attacker technique in itself. If authentication is also missing on the direct path, see unauthenticated_trust_boundary_crossing / CAPEC-115 instead.",
+      "confidence": "seed-unverified"
+    },
+    "cicd_deploys_to_production_without_approval": {
+      "tactics": ["TA0001 Initial Access"],
+      "attack_techniques": ["T1195 Supply Chain Compromise", "T1195.002 Supply Chain Compromise: Compromise Software Supply Chain", "T1199 Trusted Relationship"],
+      "confidence": "seed-unverified"
+    },
+    "logging_system_receives_sensitive_data": {
+      "tactics": ["TA0009 Collection"],
+      "attack_techniques": [],
+      "why_no_attack_technique": "Sensitive data landing in logs is an information-disclosure weakness (CWE-532), not a distinct adversary technique, unless the logged data is itself credentials -- in that case treat it like secret_used_outside_managed_store (T1552).",
+      "confidence": "seed-unverified"
+    },
+    "public_object_storage_holds_sensitive_data": {
+      "tactics": ["TA0007 Discovery", "TA0009 Collection"],
+      "attack_techniques": ["T1619 Cloud Storage Object Discovery", "T1530 Data from Cloud Storage"],
+      "confidence": "seed-unverified"
+    },
+    "serverless_function_undocumented_permissions": {
+      "tactics": ["TA0004 Privilege Escalation", "TA0040 Impact"],
+      "attack_techniques": ["T1078.004 Valid Accounts: Cloud Accounts", "T1496 Resource Hijacking"],
+      "confidence": "seed-unverified"
+    },
+    "kubernetes_workload_undocumented_identity": {
+      "tactics": ["TA0004 Privilege Escalation", "TA0002 Execution"],
+      "attack_techniques": ["T1609 Container Administration Command", "T1611 Escape to Host", "T1078.004 Valid Accounts: Cloud Accounts"],
+      "confidence": "seed-unverified"
+    }
+  },
+
+  "cwe_to_capec": {
+    "89": {"capec": ["CAPEC-66 SQL Injection"], "confidence": "seed-unverified"},
+    "79": {"capec": ["CAPEC-63 Cross-Site Scripting (XSS)"], "confidence": "seed-unverified"},
+    "352": {"capec": ["CAPEC-62 Cross Site Request Forgery"], "confidence": "seed-unverified"},
+    "798": {"capec": ["CAPEC-37 Retrieve Embedded Sensitive Data"], "confidence": "seed-unverified"},
+    "918": {"capec": ["CAPEC-664 Server Side Request Forgery"], "confidence": "seed-unverified"},
+    "611": {"capec": ["CAPEC-221 Data Serialization External Entities Blowup (closest published pattern to XXE; verify against capec.mitre.org)"], "confidence": "seed-unverified"},
+    "502": {"capec": ["CAPEC-586 Object Injection"], "confidence": "seed-unverified"},
+    "862": {"capec": ["CAPEC-1 Accessing Functionality Not Properly Constrained by ACLs"], "confidence": "seed-unverified"},
+    "863": {"capec": ["CAPEC-122 Privilege Abuse"], "confidence": "seed-unverified"},
+    "284": {"capec": ["CAPEC-122 Privilege Abuse"], "confidence": "seed-unverified"},
+    "287": {"capec": ["CAPEC-115 Authentication Bypass"], "confidence": "seed-unverified"},
+    "269": {"capec": ["CAPEC-233 Privilege Escalation"], "confidence": "seed-unverified"}
+  },
+
+  "capec_to_attack": {
+    "CAPEC-1": {"attack_techniques": [], "why_no_attack_technique": "Application-layer ACL-bypass pattern; no clean Enterprise ATT&CK equivalent.", "confidence": "seed-unverified"},
+    "CAPEC-66": {"attack_techniques": ["T1190 Exploit Public-Facing Application"], "confidence": "seed-unverified"},
+    "CAPEC-63": {"attack_techniques": ["T1189 Drive-by Compromise"], "confidence": "seed-unverified"},
+    "CAPEC-62": {"attack_techniques": [], "why_no_attack_technique": "CSRF is a client-trust weakness exploited via social engineering of the victim's browser session, not a distinct infrastructure-level ATT&CK technique.", "confidence": "seed-unverified"},
+    "CAPEC-37": {"attack_techniques": ["T1552.001 Unsecured Credentials: Credentials In Files"], "confidence": "seed-unverified"},
+    "CAPEC-664": {"attack_techniques": ["T1190 Exploit Public-Facing Application"], "confidence": "seed-unverified"},
+    "CAPEC-586": {"attack_techniques": [], "why_no_attack_technique": "Insecure deserialization is an exploitation primitive, not itself a tactic-level adversary technique; it typically enables T1190 or T1059 depending on what the gadget chain achieves.", "confidence": "seed-unverified"},
+    "CAPEC-122": {"attack_techniques": ["T1078 Valid Accounts"], "confidence": "seed-unverified"},
+    "CAPEC-115": {"attack_techniques": ["T1078 Valid Accounts"], "confidence": "seed-unverified"},
+    "CAPEC-233": {"attack_techniques": ["T1548 Abuse Elevation Control Mechanism"], "confidence": "seed-unverified"}
+  }
+}

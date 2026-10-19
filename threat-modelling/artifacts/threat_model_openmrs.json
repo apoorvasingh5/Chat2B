@@ -1,0 +1,3827 @@
+{
+ "metadata": {
+  "system_name": "OpenMRS Core",
+  "schema_version": "1.0",
+  "generated_at": "2026-10-16T00:00:00Z",
+  "generated_by": "Threat Modelling skill (repo deep dive: repo_deep_dive.py + read_repo_snippet.py)",
+  "assessment_type": "Full"
+ },
+ "executive_summary": {
+  "overall_risk": "High",
+  "summary": "OpenMRS Core is a Java/Spring/Hibernate medical-record platform holding patient health information. The deep dive found 678 service methods guarded by @Authorized privileges and 9 servlet filters, including a pre-authentication first-run setup wizard and a database update wizard that run outside the normal security stack. Authorization appears to be function-level (privilege) only, with no evidence of patient/location scoping. Authentication, session handling, secrets storage, module trust and deployment posture could not be confirmed from the repo and are carried as explicit open questions. All repo-derived facts are heuristic, low-confidence candidates.",
+  "top_risks": [
+   "Setup wizard can take over an uninitialized or reset instance (T-001).",
+   "Function-level privileges do not guarantee patient-level authorization of PHI (T-003).",
+   "Dynamically loaded modules run with full platform privileges and no evidenced integrity checks (T-004).",
+   "Web authentication/session controls and update-wizard authentication are unconfirmed (T-005, T-002).",
+   "Plaintext runtime credentials and legacy dependencies expand the blast radius (T-008, T-010)."
+  ],
+  "key_recommendations": [
+   "Restrict the setup/update wizards and pre-provision runtime configuration.",
+   "Add patient/location-scoped authorization and audit logging of chart access.",
+   "Sign and verify modules; move secrets out of the properties file; run SCA and upgrade legacy libraries."
+  ],
+  "major_unknowns": [
+   "Authentication and session implementation",
+   "Production exposure and TLS posture",
+   "Module trust model",
+   "HL7 transport and authentication",
+   "REST/FHIR module surface"
+  ]
+ },
+ "scope": {
+  "included": [
+   "openmrs-core repository: api, web, webapp, liquibase, tools, Dockerfile, Maven manifests"
+  ],
+  "excluded": [
+   "Separately distributed modules (REST, FHIR, UI), production infrastructure, source-level code audit"
+  ],
+  "assumptions": [
+   "Deployment exposure is unknown; assessed as potentially LAN/internet reachable.",
+   "Auth, session, hashing and AOP enforcement behavior were not read and are treated as unconfirmed.",
+   "Repo scan registry was extended with Spring @RequestMapping, @Controller, servlet filter and @Authorized patterns (data only)."
+  ],
+  "input_artifacts": [
+   "C:\\Users\\AnjaliD\\Documents\\Test projects\\openmrs-core (SRC-001 via repo_deep_dive.py; 810 files scanned; 4 snippet reads, audit-logged)"
+  ]
+ },
+ "architecture_summary": {
+  "components": [
+   "Anonymous / Remote User",
+   "Clinician / Authenticated User",
+   "System Administrator",
+   "OpenMRS Web Application",
+   "Startup Filter Chain (Init/Update/Module Filters)",
+   "OpenMRS Service API (Context + Services)",
+   "Hibernate DAO / Persistence Layer",
+   "Relational Database",
+   "Lucene Search Index",
+   "Runtime Properties & Application Data Directory",
+   "Liquibase / DatabaseUpdater",
+   "Module System (dynamically loaded modules)",
+   "HL7 Inbound Processing",
+   "Task Scheduler",
+   "Email / Notification",
+   "Container Runtime (Docker)",
+   "Build & Dependency Supply Chain (Maven)"
+  ],
+  "data_flows": [
+   "C-001 -> C-004 (CALLS, HTTP/HTTPS (8080))",
+   "C-002 -> C-004 (CALLS, HTTP/HTTPS)",
+   "C-003 -> C-005 (CALLS, HTTP/HTTPS)",
+   "C-001 -> C-005 (CALLS, HTTP/HTTPS)",
+   "C-004 -> C-006 (CALLS, In-process Java)",
+   "C-006 -> C-007 (CALLS, In-process Java)",
+   "C-007 -> C-008 (READS_FROM, JDBC)",
+   "C-007 -> C-009 (WRITES_TO, Filesystem)",
+   "C-005 -> C-010 (WRITES_TO, Filesystem)",
+   "C-005 -> C-008 (WRITES_TO, JDBC)",
+   "C-011 -> C-008 (WRITES_TO, JDBC)",
+   "C-005 -> C-011 (CALLS, In-process Java)",
+   "C-004 -> C-012 (CALLS, In-process Java / admin upload)",
+   "C-012 -> C-006 (CALLS, In-process Java)",
+   "C-001 -> C-013 (SENDS_DATA_TO, HL7 v2, transport unknown)",
+   "C-013 -> C-006 (CALLS, In-process Java)",
+   "C-014 -> C-006 (CALLS, In-process Java)",
+   "C-006 -> C-015 (SENDS_DATA_TO, SMTP)",
+   "C-017 -> C-016 (DEPLOYED_BY, Docker build)",
+   "C-016 -> C-004 (HOSTED_ON, Container)"
+  ],
+  "trust_boundaries": [
+   "Internet/LAN to OpenMRS Web App",
+   "Pre-auth bootstrap to privileged setup",
+   "App tier to Data tier",
+   "Core platform to third-party modules",
+   "Application to external messaging"
+  ],
+  "sensitive_assets": [
+   "Relational Database (Patient PHI, password hashes)",
+   "Runtime properties (DB credentials)",
+   "Lucene index (patient identifiers)"
+  ]
+ },
+ "business_workflows": [
+  {
+   "id": "BP-001",
+   "name": "First-Run Installation Wizard",
+   "goal": "Initialize DB, schema, admin user and runtime properties on first start.",
+   "initiating_actor": "Anonymous / Remote User",
+   "steps": [
+    {
+     "id": "S1",
+     "name": "Access setup wizard (all requests redirected)",
+     "component": "C-005",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "No runtime properties file found"
+     ],
+     "state_change": "No",
+     "state_change_description": "",
+     "client_supplied_fields": [],
+     "authorization_check": "Unknown",
+     "idempotency_required": "No",
+     "reversible": "Yes",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S2",
+     "name": "Supply DB connection and admin DB credentials",
+     "component": "C-005",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S1"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "Creates DB and writes runtime properties",
+     "client_supplied_fields": [
+      "database host",
+      "db username/password",
+      "admin user password"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "No",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S3",
+     "name": "Run Liquibase schema/demo data and create admin user",
+     "component": "C-011",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S2"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "Schema creation and admin account creation",
+     "client_supplied_fields": [
+      "admin password",
+      "demo-data option"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "No",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    }
+   ],
+   "invariants": [
+    {
+     "id": "INV-001",
+     "statement": "The setup wizard must be unreachable once the system is initialized.",
+     "enforced_by_step": "Unknown",
+     "confidence": "Low"
+    }
+   ],
+   "source_refs": [
+    "REPO:InitializationFilter.java:76-81"
+   ],
+   "confidence": "Low"
+  },
+  {
+   "id": "BP-002",
+   "name": "Database Update Wizard",
+   "goal": "Review and apply pending Liquibase changesets after an upgrade.",
+   "initiating_actor": "System Administrator",
+   "steps": [
+    {
+     "id": "S1",
+     "name": "Super user authenticates",
+     "component": "C-005",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "Pending updates"
+     ],
+     "state_change": "No",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "username",
+      "password"
+     ],
+     "authorization_check": "Yes",
+     "idempotency_required": "No",
+     "reversible": "Yes",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S2",
+     "name": "Review pending changesets",
+     "component": "C-005",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S1"
+     ],
+     "state_change": "No",
+     "state_change_description": "",
+     "client_supplied_fields": [],
+     "authorization_check": "Unknown",
+     "idempotency_required": "No",
+     "reversible": "Yes",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "Yes",
+     "source_refs": []
+    },
+    {
+     "id": "S3",
+     "name": "Execute updates",
+     "component": "C-011",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S2"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "Applies schema changes",
+     "client_supplied_fields": [
+      "confirmation"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "No",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    }
+   ],
+   "invariants": [
+    {
+     "id": "INV-002",
+     "statement": "Only an authenticated super user may trigger DB updates; S3 must re-verify the session from S1.",
+     "enforced_by_step": "Unknown",
+     "confidence": "Low"
+    }
+   ],
+   "source_refs": [
+    "REPO:UpdateFilter.java:59-63"
+   ],
+   "confidence": "Medium"
+  },
+  {
+   "id": "BP-003",
+   "name": "Clinical Order Lifecycle",
+   "goal": "Place, revise, discontinue and fulfil clinical orders for a patient encounter.",
+   "initiating_actor": "Clinician / Authenticated User",
+   "steps": [
+    {
+     "id": "S1",
+     "name": "Create encounter/visit",
+     "component": "C-006",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "Authenticated user"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "patient id",
+      "provider"
+     ],
+     "authorization_check": "Yes",
+     "idempotency_required": "Yes",
+     "reversible": "Unknown",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S2",
+     "name": "Save order (new/revise/discontinue)",
+     "component": "C-006",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S1"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "patient",
+      "concept",
+      "dosing",
+      "orderer",
+      "dates"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "Yes",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S3",
+     "name": "Fulfil / discontinue order",
+     "component": "C-006",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S2"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "order id",
+      "fulfiller status"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "Unknown",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    }
+   ],
+   "invariants": [
+    {
+     "id": "INV-003",
+     "statement": "A user may act only on patients/locations they are permitted to access; ownership must be re-checked at every step.",
+     "enforced_by_step": "Unknown",
+     "confidence": "Low"
+    },
+    {
+     "id": "INV-004",
+     "statement": "A discontinued or voided order cannot be revised or fulfilled.",
+     "enforced_by_step": "Unknown",
+     "confidence": "Low"
+    }
+   ],
+   "source_refs": [
+    "REPO:OrderService.java:141-1028 (@Authorized)"
+   ],
+   "confidence": "Low"
+  },
+  {
+   "id": "BP-004",
+   "name": "HL7 Message Intake and Processing",
+   "goal": "Accept inbound HL7 messages, queue, process into clinical records, archive or error-queue.",
+   "initiating_actor": "Anonymous / Remote User",
+   "steps": [
+    {
+     "id": "S1",
+     "name": "Queue inbound HL7 message",
+     "component": "C-013",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "Message received"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "HL7 message body"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "Unknown",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S2",
+     "name": "Parse and process into patient records",
+     "component": "C-013",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S1"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [
+      "patient match keys",
+      "observation values"
+     ],
+     "authorization_check": "Unknown",
+     "idempotency_required": "Yes",
+     "reversible": "No",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    },
+    {
+     "id": "S3",
+     "name": "Archive or move to error queue",
+     "component": "C-013",
+     "graph_edge_refs": [],
+     "preconditions": [
+      "S2"
+     ],
+     "state_change": "Yes",
+     "state_change_description": "",
+     "client_supplied_fields": [],
+     "authorization_check": "Yes",
+     "idempotency_required": "Yes",
+     "reversible": "Unknown",
+     "rate_limited": "Unknown",
+     "confirms_or_reviews": "No",
+     "source_refs": []
+    }
+   ],
+   "invariants": [
+    {
+     "id": "INV-005",
+     "statement": "Each HL7 message is processed exactly once and attributed to the correct patient.",
+     "enforced_by_step": "Unknown",
+     "confidence": "Low"
+    }
+   ],
+   "source_refs": [
+    "REPO:HL7Service.java:49-456"
+   ],
+   "confidence": "Low"
+  }
+ ],
+ "technology_profile": {
+  "cloud": "Unknown",
+  "application_types": [
+   "web",
+   "api"
+  ],
+  "languages": [
+   "Java"
+  ],
+  "identity": [
+   "Custom auth"
+  ],
+  "data_stores": [
+   "SQL",
+   "Search index"
+  ],
+  "security_domains": [
+   "web",
+   "api"
+  ]
+ },
+ "open_questions": [
+  {
+   "id": "Q-001",
+   "domain": "web",
+   "question": "How is the web login implemented (hashing, lockout, session, MFA)?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-005.",
+   "evidence": []
+  },
+  {
+   "id": "Q-002",
+   "domain": "web",
+   "question": "Are the setup and update wizards network-restricted after deployment, and what re-activates InitializationFilter?",
+   "applies_to": [
+    "Startup Filter Chain (Init/Update/Module Filters)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "Critical",
+   "reason": "Drives T-001/T-002.",
+   "evidence": []
+  },
+  {
+   "id": "Q-003",
+   "domain": "api",
+   "question": "Does the service layer enforce patient/location scoping beyond privileges?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "Critical",
+   "reason": "Drives T-003.",
+   "evidence": []
+  },
+  {
+   "id": "Q-004",
+   "domain": "web",
+   "question": "How are modules uploaded, authorized and verified?",
+   "applies_to": [
+    "Module System (dynamically loaded modules)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-004.",
+   "evidence": []
+  },
+  {
+   "id": "Q-005",
+   "domain": "api",
+   "question": "How does HL7 reach the platform and how are senders authenticated?",
+   "applies_to": [
+    "HL7 Inbound Processing"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-007/T-015.",
+   "evidence": []
+  },
+  {
+   "id": "Q-006",
+   "domain": "web",
+   "question": "Where are DB credentials stored and how are they protected?",
+   "applies_to": [
+    "Runtime Properties & Application Data Directory"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-008.",
+   "evidence": []
+  },
+  {
+   "id": "Q-007",
+   "domain": "cloud",
+   "question": "What is the production deployment (TLS, proxy, container hardening, network zones)?",
+   "applies_to": [
+    "Container Runtime (Docker)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-012.",
+   "evidence": []
+  },
+  {
+   "id": "Q-008",
+   "domain": "web",
+   "question": "Which REST/FHIR and other modules are deployed, and what do they expose?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Out of scope of core repo evidence.",
+   "evidence": []
+  },
+  {
+   "id": "Q-009",
+   "domain": "web",
+   "question": "What is logged, and is PHI access audited?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "Medium",
+   "reason": "Drives T-009.",
+   "evidence": []
+  },
+  {
+   "id": "Q-010",
+   "domain": "web",
+   "question": "Which dependency versions are deployed (log4j, commons-fileupload, jackson, c3p0)?",
+   "applies_to": [
+    "Build & Dependency Supply Chain (Maven)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Drives T-010.",
+   "evidence": []
+  }
+ ],
+ "questionnaire_results": [
+  {
+   "id": "WEB-SEC-005",
+   "domain": "web",
+   "question": "In which technologies/frameworks is the back end implemented?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Answered",
+   "risk_if_unknown": "Low",
+   "reason": "Java/Spring identified from pom manifests.",
+   "evidence": [
+    "REPO:pom.xml"
+   ]
+  },
+  {
+   "id": "WEB-SEC-006",
+   "domain": "web",
+   "question": "Which databases are used?",
+   "applies_to": [
+    "Relational Database"
+   ],
+   "status": "Answered",
+   "risk_if_unknown": "Low",
+   "reason": "MySQL, PostgreSQL, SQL Server and H2 referenced by the setup wizard and dependencies.",
+   "evidence": [
+    "REPO:InitializationFilter.java:85-91"
+   ]
+  },
+  {
+   "id": "WEB-SEC-008",
+   "domain": "web",
+   "question": "How is authentication implemented?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "No authentication code was read.",
+   "evidence": []
+  },
+  {
+   "id": "WEB-SEC-009",
+   "domain": "web",
+   "question": "How are passwords stored and generated?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Password hashing scheme not determined.",
+   "evidence": []
+  },
+  {
+   "id": "WEB-SEC-013",
+   "domain": "web",
+   "question": "Do you use a CSRF token to validate the origin of requests?",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "No evidence either way.",
+   "evidence": []
+  },
+  {
+   "id": "WEB-SEC-014",
+   "domain": "web",
+   "question": "Does authentication limit login attempts?",
+   "applies_to": [
+    "OpenMRS Web Application",
+    "Startup Filter Chain (Init/Update/Module Filters)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Lockout not evidenced for login or update wizard.",
+   "evidence": []
+  },
+  {
+   "id": "WEB-SEC-016",
+   "domain": "web",
+   "question": "What kind of authorization does the application implement?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Partially answered",
+   "risk_if_unknown": "High",
+   "reason": "Privilege-based RBAC via @Authorized observed; data-level scoping unknown.",
+   "evidence": [
+    "REPO:UserService.java:175"
+   ]
+  },
+  {
+   "id": "WEB-SEC-027",
+   "domain": "web",
+   "question": "Are there hardcoded passwords or keys in code or configuration?",
+   "applies_to": [
+    "Runtime Properties & Application Data Directory"
+   ],
+   "status": "Partially answered",
+   "risk_if_unknown": "High",
+   "reason": "Credentials are written to a properties file; storage format unverified.",
+   "evidence": [
+    "REPO:InitializationFilter.java:76-79"
+   ]
+  },
+  {
+   "id": "WEB-SEC-028",
+   "domain": "web",
+   "question": "Are requests carried out over secure protocols?",
+   "applies_to": [
+    "OpenMRS Web Application",
+    "Relational Database"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Dockerfile exposes 8080; TLS posture unknown.",
+   "evidence": [
+    "REPO:Dockerfile:86"
+   ]
+  },
+  {
+   "id": "API-SEC-006",
+   "domain": "api",
+   "question": "Is object-level authorization enforced server-side for every operation on user-owned resources?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "Critical",
+   "reason": "Only function-level @Authorized observed.",
+   "evidence": []
+  },
+  {
+   "id": "API-SEC-001",
+   "domain": "api",
+   "question": "Provide an inventory of API endpoints.",
+   "applies_to": [
+    "OpenMRS Web Application"
+   ],
+   "status": "Partially answered",
+   "risk_if_unknown": "Medium",
+   "reason": "Core service surface (678 @Authorized methods) and 9 filters found; REST/FHIR module endpoints are outside this repo.",
+   "evidence": []
+  },
+  {
+   "id": "API-SEC-021",
+   "domain": "api",
+   "question": "Is there centralized logging recording caller identity and objects accessed?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "Medium",
+   "reason": "No audit evidence.",
+   "evidence": []
+  },
+  {
+   "id": "BIZ-SEC-001",
+   "domain": "business-logic",
+   "question": "List the multi-step business processes the system implements.",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Partially answered",
+   "risk_if_unknown": "Medium",
+   "reason": "Four workflows inferred from code structure; need confirmation.",
+   "evidence": [
+    "BP-001..BP-004"
+   ]
+  },
+  {
+   "id": "BIZ-SEC-002",
+   "domain": "business-logic",
+   "question": "Can any step be invoked directly without completing prerequisites?",
+   "applies_to": [
+    "Startup Filter Chain (Init/Update/Module Filters)",
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "WFRP-001, 008, 012, 015, 023 flag possible out-of-order access.",
+   "evidence": []
+  },
+  {
+   "id": "BIZ-SEC-003",
+   "domain": "business-logic",
+   "question": "Which fields does the server trust from the client?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)",
+    "HL7 Inbound Processing"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "client_supplied_fields recorded for all workflows.",
+   "evidence": []
+  },
+  {
+   "id": "BIZ-SEC-009",
+   "domain": "business-logic",
+   "question": "Where is each business invariant enforced?",
+   "applies_to": [
+    "Startup Filter Chain (Init/Update/Module Filters)",
+    "OpenMRS Service API (Context + Services)",
+    "HL7 Inbound Processing"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "INV-001..W5 have no identified enforcement point.",
+   "evidence": []
+  },
+  {
+   "id": "BIZ-SEC-010",
+   "domain": "business-logic",
+   "question": "What prevents acting on another user's in-progress workflow instance?",
+   "applies_to": [
+    "OpenMRS Service API (Context + Services)"
+   ],
+   "status": "Unanswered",
+   "risk_if_unknown": "High",
+   "reason": "Order and encounter ownership checks unknown.",
+   "evidence": []
+  }
+ ],
+ "threats": [
+  {
+   "id": "T-001",
+   "title": "Unauthenticated first-run setup wizard can be hijacked to take over a deployment",
+   "category": "Access Control",
+   "stride": [
+    "Spoofing",
+    "Elevation of Privilege",
+    "Tampering"
+   ],
+   "owasp": [
+    "A05:2021 Security Misconfiguration",
+    "A01:2021 Broken Access Control"
+   ],
+   "cwe": [
+    "CWE-306",
+    "CWE-284"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Startup Filter Chain (Init/Update/Module Filters)",
+   "affected_data": [
+    "DB credentials",
+    "Admin credentials",
+    "Patient PHI"
+   ],
+   "attack_scenario": "While the runtime properties file is missing, InitializationFilter redirects every request to the setup wizard. An attacker who reaches a fresh or reset instance first supplies attacker-controlled DB settings and an admin password, so the instance is owned before the operator completes setup; if the properties file is deleted or unreadable later, the wizard can re-activate.",
+   "preconditions": [
+    "Instance reachable from untrusted network before setup completes",
+    "No runtime properties found, or properties lost/unreadable after deployment"
+   ],
+   "impact": "Full administrative takeover; data redirected to an attacker database; later PHI exposure.",
+   "likelihood": "Medium",
+   "severity": "Critical",
+   "confidence": "Medium",
+   "evidence": [
+    "REPO:web/src/main/java/org/openmrs/web/filter/initialization/InitializationFilter.java:76-81",
+    "GRP-008",
+    "WFRP-001",
+    "WFRP-006"
+   ],
+   "assumptions": [
+    "Wizard access control after first run was not read; the Javadoc describes only the redirect-when-no-properties behavior."
+   ],
+   "related_questions": [
+    "Q-002",
+    "BIZ-SEC-009"
+   ],
+   "related_graph_nodes": [
+    "C-005",
+    "C-010",
+    "C-008"
+   ],
+   "related_graph_edges": [],
+   "workflow_refs": [
+    "BP-001/S2"
+   ],
+   "violated_invariant": "INV-001"
+  },
+  {
+   "id": "T-002",
+   "title": "Database update wizard authentication can be brute forced or its execute step reached without re-verifying the super user",
+   "category": "Authentication",
+   "stride": [
+    "Spoofing",
+    "Elevation of Privilege",
+    "Tampering"
+   ],
+   "owasp": [
+    "A07:2021 Identification and Authentication Failures"
+   ],
+   "cwe": [
+    "CWE-307",
+    "CWE-287"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Startup Filter Chain (Init/Update/Module Filters)",
+   "affected_data": [
+    "Admin credentials",
+    "Schema",
+    "Patient PHI"
+   ],
+   "attack_scenario": "UpdateFilter prompts for super-user credentials before running Liquibase changesets, outside the normal Spring security stack. An attacker with network access repeatedly guesses credentials with no evidenced lockout, or posts directly to the execute step, and applies or triggers schema changes.",
+   "preconditions": [
+    "Pending database updates exist (after an upgrade)",
+    "No lockout/rate limiting on the pre-Spring wizard"
+   ],
+   "impact": "Schema tampering, admin account access, availability loss during upgrade windows.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:web/src/main/java/org/openmrs/web/filter/update/UpdateFilter.java:59-63",
+    "WFRP-008",
+    "WFRP-009",
+    "WFRP-010"
+   ],
+   "assumptions": [
+    "Brute-force protection and session re-verification between steps were not confirmed."
+   ],
+   "related_questions": [
+    "WEB-SEC-014",
+    "BIZ-SEC-002"
+   ],
+   "related_graph_nodes": [
+    "C-005",
+    "C-011",
+    "C-008"
+   ],
+   "related_graph_edges": [],
+   "workflow_refs": [
+    "BP-002/S3"
+   ],
+   "violated_invariant": "INV-002"
+  },
+  {
+   "id": "T-003",
+   "title": "Function-level privileges do not prove patient/location-level authorization of clinical records",
+   "category": "Authorization",
+   "stride": [
+    "Elevation of Privilege",
+    "Information Disclosure"
+   ],
+   "owasp": [
+    "A01:2021 Broken Access Control",
+    "API1:2023 Broken Object Level Authorization"
+   ],
+   "cwe": [
+    "CWE-862",
+    "CWE-639",
+    "CWE-863"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Service API (Context + Services)",
+   "affected_data": [
+    "Patient PHI",
+    "Orders",
+    "Clinical observations"
+   ],
+   "attack_scenario": "Service methods are guarded by @Authorized(PrivilegeConstants.GET_PATIENTS/GET_ENCOUNTERS/GET_ORDERS...) which check that the caller holds a privilege, not that the caller may access that specific patient, location or program. Any user holding a read privilege can enumerate or fetch any patient's records by identifier, including through modules exposing REST/FHIR endpoints.",
+   "preconditions": [
+    "User holds a broad read privilege",
+    "No per-patient/location/program scoping beyond privileges"
+   ],
+   "impact": "Mass PHI disclosure; regulatory exposure (HIPAA/GDPR).",
+   "likelihood": "High",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:api/.../PatientService.java:194",
+    "REPO:api/.../OrderService.java:141",
+    "REPO:api/.../UserService.java:175",
+    "626 @Authorized methods in api"
+   ],
+   "assumptions": [
+    "Only declared annotations were observed; AOP enforcement and any data-scoping logic were not read."
+   ],
+   "related_questions": [
+    "API-SEC-006",
+    "BIZ-SEC-010"
+   ],
+   "related_graph_nodes": [
+    "C-006",
+    "C-007",
+    "C-008"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-004",
+   "title": "Malicious or tampered module executes arbitrary code with full platform privileges",
+   "category": "Supply Chain / Code Execution",
+   "stride": [
+    "Tampering",
+    "Elevation of Privilege"
+   ],
+   "owasp": [
+    "A08:2021 Software and Data Integrity Failures"
+   ],
+   "cwe": [
+    "CWE-94",
+    "CWE-829",
+    "CWE-494"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Module System (dynamically loaded modules)",
+   "affected_data": [
+    "Platform integrity",
+    "Patient PHI"
+   ],
+   "attack_scenario": "An attacker with module-management access, or a compromised module distribution source, uploads an .omod that contributes servlet filters, Spring beans and privileges. Modules load in-process with no sandbox, so the module reads the DB, adds users or exfiltrates data.",
+   "preconditions": [
+    "Admin account or module upload path compromised, or unsigned module installed",
+    "No signature verification of modules"
+   ],
+   "impact": "Complete application and data compromise; persistent backdoor.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:web/src/main/java/org/openmrs/module/web/filter/ModuleFilter.java:29",
+    "GRP-015"
+   ],
+   "assumptions": [
+    "Module upload authorization and integrity checking were not read."
+   ],
+   "related_questions": [
+    "WEB-SEC-007"
+   ],
+   "related_graph_nodes": [
+    "C-012",
+    "C-006"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-005",
+   "title": "Weak authentication and session management on the web application",
+   "category": "Authentication",
+   "stride": [
+    "Spoofing",
+    "Elevation of Privilege"
+   ],
+   "owasp": [
+    "A07:2021 Identification and Authentication Failures"
+   ],
+   "cwe": [
+    "CWE-287",
+    "CWE-307",
+    "CWE-384",
+    "CWE-352"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Web Application",
+   "affected_data": [
+    "Credentials",
+    "Patient PHI"
+   ],
+   "attack_scenario": "Credential stuffing or brute force against the login endpoint, session fixation, or CSRF against authenticated clinicians succeeds if lockout, session regeneration and anti-CSRF tokens are missing.",
+   "preconditions": [
+    "Login reachable from untrusted network",
+    "No lockout, MFA or CSRF protection"
+   ],
+   "impact": "Account takeover of clinical users; unauthorized PHI access or order changes.",
+   "likelihood": "High",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "GRP-002",
+    "GRP-005",
+    "REPO:web/pom.xml (servlet/JSP stack)"
+   ],
+   "assumptions": [
+    "Authentication code was not reviewed; this is a design-pattern risk pending questionnaire answers."
+   ],
+   "related_questions": [
+    "WEB-SEC-008",
+    "WEB-SEC-011",
+    "WEB-SEC-012",
+    "WEB-SEC-013",
+    "WEB-SEC-014"
+   ],
+   "related_graph_nodes": [
+    "C-004",
+    "C-006"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-006",
+   "title": "Injection via HQL/SQL/Lucene query construction in the persistence layer",
+   "category": "Injection",
+   "stride": [
+    "Tampering",
+    "Information Disclosure"
+   ],
+   "owasp": [
+    "A03:2021 Injection"
+   ],
+   "cwe": [
+    "CWE-89",
+    "CWE-564"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Hibernate DAO / Persistence Layer",
+   "affected_data": [
+    "Patient PHI",
+    "Credentials"
+   ],
+   "attack_scenario": "User-supplied search terms (patient name/identifier search, concept search, admin SQL/reporting features) reach Hibernate/HQL or Lucene query parsers via string concatenation or dynamic queries, allowing data extraction or manipulation.",
+   "preconditions": [
+    "Any code path builds queries from unvalidated input"
+   ],
+   "impact": "PHI disclosure or tampering.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:api/pom.xml (hibernate-core, hibernate-search-orm, lucene-queryparser)"
+   ],
+   "assumptions": [
+    "No query-building code was read; ORM usage may mitigate most paths."
+   ],
+   "related_questions": [
+    "WEB-SEC-020"
+   ],
+   "related_graph_nodes": [
+    "C-007",
+    "C-008",
+    "C-009"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-007",
+   "title": "Unauthenticated or unvalidated HL7 message intake enables record injection or parser attacks",
+   "category": "Input Validation",
+   "stride": [
+    "Tampering",
+    "Spoofing",
+    "Denial of Service"
+   ],
+   "owasp": [
+    "A03:2021 Injection",
+    "A08:2021 Software and Data Integrity Failures"
+   ],
+   "cwe": [
+    "CWE-20",
+    "CWE-611",
+    "CWE-306"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "HL7 Inbound Processing",
+   "affected_data": [
+    "Patient PHI"
+   ],
+   "attack_scenario": "An attacker able to submit HL7 messages inserts forged observations or encounters for arbitrary patients, or sends malformed/XML-bearing payloads to crash or exploit the HAPI parser and queue processor.",
+   "preconditions": [
+    "HL7 intake channel reachable by untrusted senders",
+    "No message authentication or schema/size validation"
+   ],
+   "impact": "Clinical record integrity loss; patient safety risk; service disruption.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:api/.../hl7/HL7Service.java:49-456",
+    "GRP-003",
+    "WFRP-022",
+    "WFRP-024"
+   ],
+   "assumptions": [
+    "Transport/authentication for HL7 intake is not defined in core and may be module specific."
+   ],
+   "related_questions": [
+    "API-SEC-007",
+    "BIZ-SEC-008"
+   ],
+   "related_graph_nodes": [
+    "C-013",
+    "C-006",
+    "C-008"
+   ],
+   "related_graph_edges": [],
+   "workflow_refs": [
+    "BP-004/S1",
+    "BP-004/S2"
+   ]
+  },
+  {
+   "id": "T-008",
+   "title": "Database and admin credentials stored in plaintext runtime properties file",
+   "category": "Secrets Management",
+   "stride": [
+    "Information Disclosure",
+    "Elevation of Privilege"
+   ],
+   "owasp": [
+    "A02:2021 Cryptographic Failures",
+    "A05:2021 Security Misconfiguration"
+   ],
+   "cwe": [
+    "CWE-256",
+    "CWE-312",
+    "CWE-798"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Runtime Properties & Application Data Directory",
+   "affected_data": [
+    "DB credentials",
+    "Config secrets"
+   ],
+   "attack_scenario": "The setup wizard writes DB connection settings to openmrs-runtime.properties on the host. Anyone with filesystem, backup, container-layer or log access reads DB credentials and connects directly to the database.",
+   "preconditions": [
+    "Read access to host filesystem, image, or backups"
+   ],
+   "impact": "Direct database compromise bypassing application authorization.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:InitializationFilter.java:76-79",
+    "GRP-001"
+   ],
+   "assumptions": [
+    "Credential storage format was not read; plaintext is assumed from OpenMRS design."
+   ],
+   "related_questions": [
+    "WEB-SEC-027"
+   ],
+   "related_graph_nodes": [
+    "C-010",
+    "C-008",
+    "C-005"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-009",
+   "title": "PHI leakage in logs and insufficient audit trail for privileged and PHI-access actions",
+   "category": "Logging & Monitoring",
+   "stride": [
+    "Repudiation",
+    "Information Disclosure"
+   ],
+   "owasp": [
+    "A09:2021 Security Logging and Monitoring Failures"
+   ],
+   "cwe": [
+    "CWE-532",
+    "CWE-778"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Service API (Context + Services)",
+   "affected_data": [
+    "Patient PHI",
+    "Credentials"
+   ],
+   "attack_scenario": "Verbose logging of patient identifiers or exception details leaks PHI into log files; absent access logging means unauthorized chart access or privilege denials go undetected.",
+   "preconditions": [
+    "Debug-level logging in production; no audit of read access"
+   ],
+   "impact": "Undetected insider snooping and breach; compliance failure.",
+   "likelihood": "Medium",
+   "severity": "Medium",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:pom.xml (log4j-core, log4j-1.2-api, slf4j, logback)"
+   ],
+   "assumptions": [
+    "Log content and audit coverage not reviewed."
+   ],
+   "related_questions": [
+    "WEB-SEC-023",
+    "WEB-SEC-024",
+    "API-SEC-021"
+   ],
+   "related_graph_nodes": [
+    "C-006",
+    "C-004"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-010",
+   "title": "Vulnerable or end-of-life third-party dependencies",
+   "category": "Vulnerable Components",
+   "stride": [
+    "Elevation of Privilege",
+    "Denial of Service"
+   ],
+   "owasp": [
+    "A06:2021 Vulnerable and Outdated Components"
+   ],
+   "cwe": [
+    "CWE-1104"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Build & Dependency Supply Chain (Maven)",
+   "affected_data": [
+    "Platform integrity"
+   ],
+   "attack_scenario": "The build pulls ~115 dependencies including the log4j 1.2 bridge, log4j-core, commons-fileupload, c3p0, hibernate-ehcache, jackson-mapper-asl and the legacy javax stack; known CVEs in outdated versions are exploitable through request parsing or deserialization.",
+   "preconditions": [
+    "Vulnerable versions deployed"
+   ],
+   "impact": "Remote code execution or DoS depending on component.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Medium",
+   "evidence": [
+    "REPO:pom.xml dependency list (repo-manifest.json)"
+   ],
+   "assumptions": [
+    "Specific versions were not assessed; SCA scan required to confirm any CVE."
+   ],
+   "related_questions": [
+    "WEB-SEC-007"
+   ],
+   "related_graph_nodes": [
+    "C-017",
+    "C-004"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-011",
+   "title": "Stored or reflected XSS in JSP/Velocity views exposing clinician sessions",
+   "category": "Injection",
+   "stride": [
+    "Tampering",
+    "Information Disclosure",
+    "Elevation of Privilege"
+   ],
+   "owasp": [
+    "A03:2021 Injection"
+   ],
+   "cwe": [
+    "CWE-79"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Web Application",
+   "affected_data": [
+    "Patient PHI",
+    "Session tokens"
+   ],
+   "attack_scenario": "Patient names, notes, concept descriptions or form content stored by one user render unescaped in JSP/Velocity pages for another, running attacker script in a clinician or admin session.",
+   "preconditions": [
+    "Unescaped output in any view",
+    "Missing CSP/HttpOnly"
+   ],
+   "impact": "Session hijack; admin takeover via script.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:web/pom.xml (JSP/JSTL/Velocity)"
+   ],
+   "assumptions": [
+    "Output encoding practices not reviewed."
+   ],
+   "related_questions": [
+    "WEB-SEC-018",
+    "WEB-SEC-012"
+   ],
+   "related_graph_nodes": [
+    "C-004"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-012",
+   "title": "Cleartext transport between users, application and database",
+   "category": "Cryptography",
+   "stride": [
+    "Information Disclosure",
+    "Tampering"
+   ],
+   "owasp": [
+    "A02:2021 Cryptographic Failures"
+   ],
+   "cwe": [
+    "CWE-319"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Web Application",
+   "affected_data": [
+    "Credentials",
+    "Patient PHI"
+   ],
+   "attack_scenario": "Container exposes port 8080 with no documented TLS termination; JDBC TLS is not evidenced. Network attackers sniff or modify credentials and PHI in transit.",
+   "preconditions": [
+    "Deployment without TLS reverse proxy or JDBC TLS"
+   ],
+   "impact": "PHI and credential interception.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO:Dockerfile:86",
+    "REPO:Dockerfile:132",
+    "GRP-005",
+    "GRP-009"
+   ],
+   "assumptions": [
+    "Production TLS posture unknown."
+   ],
+   "related_questions": [
+    "WEB-SEC-028",
+    "API-SEC-018"
+   ],
+   "related_graph_nodes": [
+    "C-004",
+    "C-008",
+    "C-007"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-013",
+   "title": "Scheduled-task management enables privileged code execution and persistence",
+   "category": "Elevation of Privilege",
+   "stride": [
+    "Elevation of Privilege",
+    "Tampering"
+   ],
+   "owasp": [
+    "A04:2021 Insecure Design"
+   ],
+   "cwe": [
+    "CWE-94",
+    "CWE-250"
+   ],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "Task Scheduler",
+   "affected_data": [
+    "Platform integrity"
+   ],
+   "attack_scenario": "A user with 'Manage Scheduler' can register tasks that reference arbitrary task classes and cron schedules, creating recurring code execution under the application daemon identity that survives restarts.",
+   "preconditions": [
+    "Attacker holds Manage Scheduler privilege or admin session"
+   ],
+   "impact": "Persistent server-side code execution.",
+   "likelihood": "Low",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "REPO: 14 scheduler methods @Authorized(\"Manage Scheduler\")"
+   ],
+   "assumptions": [
+    "Task class restriction logic was not read."
+   ],
+   "related_questions": [
+    "WEB-SEC-017"
+   ],
+   "related_graph_nodes": [
+    "C-014",
+    "C-006"
+   ],
+   "related_graph_edges": []
+  },
+  {
+   "id": "T-014",
+   "title": "Clinical order workflow trusts client-supplied patient, order and status fields without per-step ownership or state checks",
+   "category": "Business Logic",
+   "stride": [
+    "Tampering",
+    "Elevation of Privilege"
+   ],
+   "owasp": [],
+   "cwe": [],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "OpenMRS Service API (Context + Services)",
+   "affected_data": [
+    "Orders",
+    "Patient PHI"
+   ],
+   "attack_scenario": "A clinician legitimately authorized to place orders sends a valid revise/discontinue/fulfil request that targets another patient's order id, or moves a discontinued or voided order back to an active state. Every request is syntactically valid so no injection scanner flags it; patient-safety consequences include wrong medication or lab results.",
+   "preconditions": [
+    "Order endpoints accept identifiers and status from client",
+    "Ownership and state-machine checks not re-evaluated at each step"
+   ],
+   "impact": "Patient-safety incident; integrity loss of medication/lab orders.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "WFRP-013",
+    "WFRP-016",
+    "WFRP-018",
+    "WFRP-019",
+    "WFRP-020",
+    "REPO:api/.../OrderService.java:141-1028"
+   ],
+   "assumptions": [
+    "Order lifecycle steps were inferred from @Authorized service methods, not from documented workflow."
+   ],
+   "related_questions": [
+    "BIZ-SEC-003",
+    "BIZ-SEC-010",
+    "BIZ-SEC-013"
+   ],
+   "related_graph_nodes": [
+    "C-006",
+    "C-008"
+   ],
+   "related_graph_edges": [],
+   "workflow_refs": [
+    "BP-003/S2",
+    "BP-003/S3"
+   ],
+   "violated_invariant": "INV-004"
+  },
+  {
+   "id": "T-015",
+   "title": "HL7 intake lacks exactly-once and patient-attribution guarantees (replay, duplicate, mis-match)",
+   "category": "Business Logic",
+   "stride": [
+    "Tampering",
+    "Repudiation"
+   ],
+   "owasp": [],
+   "cwe": [],
+   "capec": [],
+   "attack_techniques": [],
+   "component": "HL7 Inbound Processing",
+   "affected_data": [
+    "Patient PHI",
+    "Clinical observations"
+   ],
+   "attack_scenario": "A replayed or deliberately duplicated HL7 message creates duplicate or conflicting observations; ambiguous patient-matching keys let a forged message attach results to the wrong patient with no reconciliation control.",
+   "preconditions": [
+    "No message id dedupe or sender authentication",
+    "Patient-match keys taken from message body"
+   ],
+   "impact": "Wrong-patient clinical data; downstream decisions on corrupted records.",
+   "likelihood": "Medium",
+   "severity": "High",
+   "confidence": "Low",
+   "evidence": [
+    "WFRP-024",
+    "WFRP-025",
+    "WFRP-027",
+    "WFRP-028",
+    "REPO:api/.../hl7/HL7Service.java:49-456"
+   ],
+   "assumptions": [
+    "Matching and dedupe logic not read."
+   ],
+   "related_questions": [
+    "BIZ-SEC-004",
+    "BIZ-SEC-014"
+   ],
+   "related_graph_nodes": [
+    "C-013",
+    "C-006"
+   ],
+   "related_graph_edges": [],
+   "workflow_refs": [
+    "BP-004/S1",
+    "BP-004/S2"
+   ],
+   "violated_invariant": "INV-005"
+  }
+ ],
+ "attack_paths": [
+  {
+   "id": "AP-001",
+   "title": "Internet attacker takes over a fresh or reset instance through the setup wizard",
+   "entry_point": "Startup Filter Chain (Init/Update/Module Filters)",
+   "path": [
+    "Anonymous / Remote User",
+    "Startup Filter Chain (Init/Update/Module Filters)",
+    "Runtime Properties & Application Data Directory",
+    "Relational Database"
+   ],
+   "required_weaknesses": [
+    "Setup wizard reachable and unauthenticated while properties are missing",
+    "No wizard-closure invariant (INV-001) enforced"
+   ],
+   "attack_techniques": [],
+   "impact": "Admin takeover and attacker-controlled database.",
+   "severity": "Critical",
+   "recommended_controls": [
+    "Restrict the wizard to localhost or a one-time setup token",
+    "Pre-provision runtime properties in automated deployments"
+   ]
+  },
+  {
+   "id": "AP-002",
+   "title": "Authenticated clinician enumerates patient charts through function-level-only authorization",
+   "entry_point": "OpenMRS Web Application",
+   "path": [
+    "Clinician / Authenticated User",
+    "OpenMRS Web Application",
+    "OpenMRS Service API (Context + Services)",
+    "Hibernate DAO / Persistence Layer",
+    "Relational Database"
+   ],
+   "required_weaknesses": [
+    "Read privilege granted broadly",
+    "No per-patient/location scoping",
+    "No access auditing"
+   ],
+   "attack_techniques": [],
+   "impact": "Mass PHI disclosure.",
+   "severity": "High",
+   "recommended_controls": [
+    "Add patient/location-scoped authorization",
+    "Audit and alert on bulk chart access"
+   ]
+  },
+  {
+   "id": "AP-003",
+   "title": "Compromised admin or module source installs a backdoor module that reads the database",
+   "entry_point": "Module System (dynamically loaded modules)",
+   "path": [
+    "System Administrator",
+    "OpenMRS Web Application",
+    "Module System (dynamically loaded modules)",
+    "OpenMRS Service API (Context + Services)",
+    "Relational Database"
+   ],
+   "required_weaknesses": [
+    "Module upload accessible to a compromised admin",
+    "No module signature verification",
+    "No in-process sandbox"
+   ],
+   "attack_techniques": [],
+   "impact": "Persistent full compromise with direct DB access.",
+   "severity": "High",
+   "recommended_controls": [
+    "Sign and verify modules",
+    "Allowlist module sources and restrict upload"
+   ]
+  },
+  {
+   "id": "AP-004",
+   "title": "Host or backup access exposes runtime properties and leads to direct database compromise",
+   "entry_point": "Runtime Properties & Application Data Directory",
+   "path": [
+    "Anonymous / Remote User",
+    "Runtime Properties & Application Data Directory",
+    "Relational Database"
+   ],
+   "required_weaknesses": [
+    "Plaintext DB credentials",
+    "Database reachable from attacker position"
+   ],
+   "attack_techniques": [],
+   "impact": "Unrestricted DB access bypassing application controls.",
+   "severity": "High",
+   "recommended_controls": [
+    "Use a secret manager or environment-injected secrets",
+    "Network-restrict the database"
+   ]
+  },
+  {
+   "id": "AP-005",
+   "title": "Forged HL7 messages write incorrect clinical data for another patient",
+   "entry_point": "HL7 Inbound Processing",
+   "path": [
+    "Anonymous / Remote User",
+    "HL7 Inbound Processing",
+    "OpenMRS Service API (Context + Services)",
+    "Relational Database"
+   ],
+   "required_weaknesses": [
+    "No sender authentication",
+    "Patient-match keys trusted from message",
+    "No dedupe or reconciliation"
+   ],
+   "attack_techniques": [],
+   "impact": "Clinical record integrity loss.",
+   "severity": "High",
+   "recommended_controls": [
+    "Authenticate senders (mTLS/signed messages)",
+    "Quarantine ambiguous matches for human review"
+   ]
+  }
+ ],
+ "mitigations": [
+  {
+   "threat_id": "T-001",
+   "mitigations": {
+    "preventive": [
+     "Disable or bind the setup wizard to localhost after first initialization; require a one-time setup token.",
+     "Pre-provision runtime properties in automated deployments so the wizard never activates."
+    ],
+    "detective": [
+     "Alert when the wizard is served or runtime properties change."
+    ],
+    "corrective": [
+     "Rotate admin and DB credentials; rebuild instance from a trusted baseline."
+    ],
+    "compensating": [
+     "Network ACL or reverse proxy that blocks setup paths from untrusted networks."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-002",
+   "mitigations": {
+    "preventive": [
+     "Add lockout/rate limiting to the update wizard; re-verify the authenticated super user on the execute step.",
+     "Run updates from a maintenance window on an isolated network."
+    ],
+    "detective": [
+     "Log and alert on failed wizard logins."
+    ],
+    "corrective": [
+     "Restore DB from backup if unauthorized changesets ran."
+    ],
+    "compensating": [
+     "Restrict access to the update path by IP allowlist."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-003",
+   "mitigations": {
+    "preventive": [
+     "Add patient, location and program-scoped authorization in addition to privileges.",
+     "Centralize access decisions in the service layer."
+    ],
+    "detective": [
+     "Audit-log every patient chart access; alert on bulk or out-of-care-team access."
+    ],
+    "corrective": [
+     "Revoke sessions and notify per breach policy."
+    ],
+    "compensating": [
+     "Break-the-glass workflow with reason capture for sensitive records."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-004",
+   "mitigations": {
+    "preventive": [
+     "Verify module signatures and restrict upload to a controlled pipeline.",
+     "Restrict module-management privileges to a small admin group."
+    ],
+    "detective": [
+     "Alert on module install/changes and unexpected servlet filters."
+    ],
+    "corrective": [
+     "Remove module, rotate secrets, redeploy."
+    ],
+    "compensating": [
+     "Run OpenMRS with least-privileged OS and DB accounts."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-005",
+   "mitigations": {
+    "preventive": [
+     "Enforce lockout, MFA, session regeneration on login, HttpOnly/Secure/SameSite cookies and CSRF tokens."
+    ],
+    "detective": [
+     "Alert on credential-stuffing patterns."
+    ],
+    "corrective": [
+     "Force password reset and revoke sessions."
+    ],
+    "compensating": [
+     "WAF rate limiting on login."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-006",
+   "mitigations": {
+    "preventive": [
+     "Use parameterized HQL/SQL and escape Lucene queries; validate input."
+    ],
+    "detective": [
+     "Log and alert on query errors/anomalies."
+    ],
+    "corrective": [
+     "Patch and reindex."
+    ],
+    "compensating": [
+     "WAF SQLi rules."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-007",
+   "mitigations": {
+    "preventive": [
+     "Authenticate HL7 senders; validate schema and size; disable external entity resolution."
+    ],
+    "detective": [
+     "Monitor HL7 error queue volume."
+    ],
+    "corrective": [
+     "Quarantine and reprocess messages."
+    ],
+    "compensating": [
+     "Network-restrict the HL7 listener."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-008",
+   "mitigations": {
+    "preventive": [
+     "Move DB credentials to a secret manager or injected environment; restrict file permissions."
+    ],
+    "detective": [
+     "Alert on reads of the properties file."
+    ],
+    "corrective": [
+     "Rotate DB credentials."
+    ],
+    "compensating": [
+     "Encrypt backups and restrict image access."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-009",
+   "mitigations": {
+    "preventive": [
+     "Mask PHI in logs; set production log levels; add structured audit events."
+    ],
+    "detective": [
+     "Centralized log monitoring."
+    ],
+    "corrective": [
+     "Purge exposed logs."
+    ],
+    "compensating": [
+     "Restrict log access."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-010",
+   "mitigations": {
+    "preventive": [
+     "Run SCA in CI; upgrade or replace log4j 1.x bridge and legacy libraries."
+    ],
+    "detective": [
+     "Continuous advisory monitoring."
+    ],
+    "corrective": [
+     "Emergency patch process."
+    ],
+    "compensating": [
+     "WAF virtual patching."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-011",
+   "mitigations": {
+    "preventive": [
+     "Context-aware output encoding; Content-Security-Policy; HttpOnly cookies."
+    ],
+    "detective": [
+     "Monitor CSP reports."
+    ],
+    "corrective": [
+     "Revoke sessions."
+    ],
+    "compensating": [
+     "WAF XSS rules."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-012",
+   "mitigations": {
+    "preventive": [
+     "Terminate TLS in front of the application; enable JDBC TLS; HSTS."
+    ],
+    "detective": [
+     "Scan for cleartext endpoints."
+    ],
+    "corrective": [
+     "Rotate credentials."
+    ],
+    "compensating": [
+     "Restrict to a private network."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-013",
+   "mitigations": {
+    "preventive": [
+     "Restrict scheduler to allowlisted task classes; separate privilege."
+    ],
+    "detective": [
+     "Alert on new or changed tasks."
+    ],
+    "corrective": [
+     "Remove task, review host."
+    ],
+    "compensating": [
+     "Run scheduler under a low-privilege identity."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-014",
+   "mitigations": {
+    "preventive": [
+     "Re-check patient ownership and order state at each step; enforce a server-side state machine; do not accept status fields from clients."
+    ],
+    "detective": [
+     "Alert on illegal transitions."
+    ],
+    "corrective": [
+     "Reconcile and correct affected orders."
+    ],
+    "compensating": [
+     "Pharmacist verification gate for high-risk orders."
+    ]
+   }
+  },
+  {
+   "threat_id": "T-015",
+   "mitigations": {
+    "preventive": [
+     "Deduplicate by message id; authenticate senders; quarantine ambiguous patient matches."
+    ],
+    "detective": [
+     "Reconcile counts between queue, archive and errors."
+    ],
+    "corrective": [
+     "Reverse mis-attributed observations."
+    ],
+    "compensating": [
+     "Manual review of unmatched messages."
+    ]
+   }
+  }
+ ],
+ "sast_scan_configuration": {
+  "languages": [
+   "Java"
+  ],
+  "recommendations": [
+   {
+    "language": "Java",
+    "mode": "preset",
+    "recommended_preset": "All",
+    "coverage_pct": 69.2,
+    "covered_cwes": [
+     "20",
+     "79",
+     "89",
+     "94",
+     "256",
+     "284",
+     "287",
+     "319",
+     "352",
+     "384",
+     "494",
+     "502",
+     "611",
+     "639",
+     "778",
+     "798",
+     "829",
+     "862"
+    ],
+    "gap_cwes": [
+     "250",
+     "306",
+     "307",
+     "312",
+     "532",
+     "564",
+     "863",
+     "1104"
+    ],
+    "supplemental_queries_for_gaps": [
+     {
+      "package": "Java_Android",
+      "query_name": "Unused_Permission",
+      "severity": "Low",
+      "cwe": "250"
+     },
+     {
+      "package": "Java_Android",
+      "query_name": "Insecure_Data_Storage",
+      "severity": "Low",
+      "cwe": "312"
+     },
+     {
+      "package": "Java_Android",
+      "query_name": "Insecure_Data_Storage_Usage",
+      "severity": "Low",
+      "cwe": "312"
+     }
+    ],
+    "supplemental_queries_truncated_count": 0,
+    "top_alternative_presets": [
+     {
+      "preset": "OWASP TOP 10 - 2021",
+      "coverage_pct": 69.2,
+      "covered_cwes": [
+       "20",
+       "79",
+       "89",
+       "94",
+       "256",
+       "284",
+       "287",
+       "319",
+       "352",
+       "384",
+       "494",
+       "502",
+       "611",
+       "639",
+       "778",
+       "798",
+       "829",
+       "862"
+      ],
+      "query_count": 215
+     },
+     {
+      "preset": "OWASP ASVS",
+      "coverage_pct": 69.2,
+      "covered_cwes": [
+       "20",
+       "79",
+       "89",
+       "94",
+       "256",
+       "284",
+       "287",
+       "319",
+       "352",
+       "384",
+       "494",
+       "502",
+       "611",
+       "639",
+       "778",
+       "798",
+       "829",
+       "862"
+      ],
+      "query_count": 161
+     },
+     {
+      "preset": "High and Medium and Low",
+      "coverage_pct": 61.5,
+      "covered_cwes": [
+       "20",
+       "79",
+       "89",
+       "94",
+       "256",
+       "287",
+       "319",
+       "352",
+       "384",
+       "494",
+       "502",
+       "611",
+       "639",
+       "798",
+       "829",
+       "862"
+      ],
+      "query_count": 207
+     }
+    ]
+   }
+  ]
+ },
+ "sast_recommendations": [
+  {
+   "id": "SAST-001",
+   "threat_id": "T-003",
+   "component": "OpenMRS Service API (Context + Services)",
+   "focus_area": "Missing function/object-level authorization",
+   "scan_recommendation": "Find service and controller methods that read or modify patient-scoped data without an ownership/location check, and @Authorized-style annotations used as the only gate.",
+   "priority": "P0",
+   "relevant_queries": [
+    {
+     "package": "Java_Spring",
+     "query_name": "Spring_Missing_Function_Level_Authorization",
+     "severity": "Low",
+     "cwe": "862"
+    },
+    {
+     "package": "Java_Spring",
+     "query_name": "Spring_Missing_Object_Level_Authorization",
+     "severity": "Information",
+     "cwe": "862"
+    }
+   ]
+  },
+  {
+   "id": "SAST-002",
+   "threat_id": "T-006",
+   "component": "Hibernate DAO / Persistence Layer",
+   "focus_area": "SQL/HQL injection",
+   "scan_recommendation": "Trace request inputs into Hibernate createQuery/createSQLQuery calls and Lucene QueryParser use.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_High_Risk",
+     "query_name": "SQL_Injection",
+     "severity": "High",
+     "cwe": "89"
+    },
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Second_Order_SQL_Injection",
+     "severity": "High",
+     "cwe": "89"
+    }
+   ]
+  },
+  {
+   "id": "SAST-003",
+   "threat_id": "T-011",
+   "component": "OpenMRS Web Application",
+   "focus_area": "XSS in JSP/Velocity views",
+   "scan_recommendation": "Find unescaped output of stored or request data in JSP/Velocity templates and controllers.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Reflected_XSS",
+     "severity": "High",
+     "cwe": "79"
+    },
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Stored_XSS",
+     "severity": "High",
+     "cwe": "79"
+    }
+   ]
+  },
+  {
+   "id": "SAST-004",
+   "threat_id": "T-005",
+   "component": "OpenMRS Web Application",
+   "focus_area": "CSRF and session fixation",
+   "scan_recommendation": "Check state-changing endpoints for CSRF tokens and login flows for session id regeneration.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_Spring",
+     "query_name": "Spring_CSRF",
+     "severity": "Medium",
+     "cwe": "352"
+    },
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "CSRF",
+     "severity": "Medium",
+     "cwe": "352"
+    },
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "Session_Fixation",
+     "severity": "Medium",
+     "cwe": "384"
+    }
+   ]
+  },
+  {
+   "id": "SAST-005",
+   "threat_id": "T-008",
+   "component": "Runtime Properties & Application Data Directory",
+   "focus_area": "Plaintext credentials and hardcoded secrets",
+   "scan_recommendation": "Find writes of passwords to properties files and hardcoded connection strings or keys.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "Plaintext_Storage_of_a_Password",
+     "severity": "Medium",
+     "cwe": "256"
+    },
+    {
+     "package": "Java_Best_Coding_Practice",
+     "query_name": "Hardcoded_Connection_String",
+     "severity": "Information",
+     "cwe": "798"
+    },
+    {
+     "package": "Java_Low_Visibility",
+     "query_name": "TruffleHog_HighEntropy_Strings",
+     "severity": "Low",
+     "cwe": "798"
+    },
+    {
+     "package": "Java_Low_Visibility",
+     "query_name": "TruffleHog_Regex_Matches",
+     "severity": "Low",
+     "cwe": "798"
+    }
+   ]
+  },
+  {
+   "id": "SAST-006",
+   "threat_id": "T-007",
+   "component": "HL7 Inbound Processing",
+   "focus_area": "XXE and unsafe parsing/deserialization",
+   "scan_recommendation": "Check XML/HL7 parser configuration for external entity resolution and Java deserialization of untrusted data.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "Improper_Restriction_of_Stored_XXE_Ref",
+     "severity": "Medium",
+     "cwe": "611"
+    },
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "Improper_Restriction_of_XXE_Ref",
+     "severity": "Medium",
+     "cwe": "611"
+    },
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Deserialization_of_Untrusted_Data",
+     "severity": "High",
+     "cwe": "502"
+    },
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Deserialization_of_Untrusted_Data_in_JMS",
+     "severity": "High",
+     "cwe": "502"
+    }
+   ]
+  },
+  {
+   "id": "SAST-007",
+   "threat_id": "T-004",
+   "component": "Module System (dynamically loaded modules)",
+   "focus_area": "Dynamic code/module loading",
+   "scan_recommendation": "Find class loading, reflection and file-write paths in the module loader and scheduler task instantiation lacking allowlists or integrity checks.",
+   "priority": "P1",
+   "relevant_queries": [
+    {
+     "package": "Java_High_Risk",
+     "query_name": "Code_Injection",
+     "severity": "High",
+     "cwe": "94"
+    },
+    {
+     "package": "Java_Medium_Threat",
+     "query_name": "Download_of_Code_Without_Integrity_Check",
+     "severity": "Medium",
+     "cwe": "494"
+    }
+   ]
+  },
+  {
+   "id": "SAST-008",
+   "threat_id": "T-009",
+   "component": "OpenMRS Service API (Context + Services)",
+   "focus_area": "Sensitive data in logs and missing audit logging",
+   "scan_recommendation": "Find logger calls that include patient objects or credentials, and service methods lacking audit events.",
+   "priority": "P2",
+   "relevant_queries": [
+    {
+     "package": "Java_Best_Coding_Practice",
+     "query_name": "Insufficient_Logging_of_Database_Actions",
+     "severity": "Information",
+     "cwe": "778"
+    },
+    {
+     "package": "Java_Best_Coding_Practice",
+     "query_name": "Insufficient_Logging_of_Exceptions",
+     "severity": "Information",
+     "cwe": "778"
+    }
+   ]
+  },
+  {
+   "id": "SAST-009",
+   "threat_id": "T-014",
+   "component": "OpenMRS Service API (Context + Services)",
+   "focus_area": "Order state-machine and ownership validation",
+   "scan_recommendation": "Manual-review/custom rule focus: order save/discontinue/fulfil paths accepting status or ids from callers without state/ownership re-checks. No catalog query exists for this class.",
+   "priority": "P1",
+   "relevant_queries": []
+  }
+ ],
+ "dast_recommendations": [
+  {
+   "id": "DAST-001",
+   "threat_id": "T-001",
+   "component": "Startup Filter Chain (Init/Update/Module Filters)",
+   "test_name": "Setup wizard exposure after initialization",
+   "test_objective": "Verify the setup wizard is not reachable on an initialized instance and cannot be re-activated.",
+   "high_level_steps": [
+    "On a non-production initialized instance, request setup wizard paths without authentication.",
+    "Verify access is denied or redirected.",
+    "On a staged fresh instance, verify wizard access is restricted to the intended network."
+   ],
+   "expected_secure_behavior": "Setup paths return denial/redirect once initialized; fresh-instance wizard is network restricted.",
+   "priority": "P0",
+   "safety_note": "Do not run against production; never submit real DB credentials to a wizard under test."
+  },
+  {
+   "id": "DAST-002",
+   "threat_id": "T-002",
+   "component": "Startup Filter Chain (Init/Update/Module Filters)",
+   "test_name": "Update wizard authentication and lockout",
+   "test_objective": "Verify the update wizard enforces authentication, lockout and step re-verification.",
+   "high_level_steps": [
+    "On a staging instance with pending changesets, attempt unauthenticated access to review and execute steps.",
+    "Attempt a small number of invalid logins and observe lockout/throttling."
+   ],
+   "expected_secure_behavior": "Execute step is refused without a valid super-user session; repeated failures are throttled.",
+   "priority": "P1",
+   "safety_note": "Staging only; use disposable DB snapshots."
+  },
+  {
+   "id": "DAST-003",
+   "threat_id": "T-003",
+   "component": "OpenMRS Service API (Context + Services)",
+   "test_name": "Patient-level BOLA/IDOR testing",
+   "test_objective": "Verify users cannot read other patients' data outside their location or care team.",
+   "high_level_steps": [
+    "Create two test users with the same read privileges but different locations.",
+    "As user A, request patient/encounter/order identifiers owned by user B's scope.",
+    "Check response codes and fields."
+   ],
+   "expected_secure_behavior": "Access outside the user's scope is denied without disclosing object existence.",
+   "priority": "P0",
+   "safety_note": "Synthetic patients only; no real PHI."
+  },
+  {
+   "id": "DAST-004",
+   "threat_id": "T-005",
+   "component": "OpenMRS Web Application",
+   "test_name": "Authentication, session and CSRF testing",
+   "test_objective": "Verify lockout, session regeneration, cookie flags and CSRF protection.",
+   "high_level_steps": [
+    "Review cookie attributes after login.",
+    "Verify the session id changes after login.",
+    "Submit state-changing requests without CSRF tokens.",
+    "Apply bounded login attempts to test lockout."
+   ],
+   "expected_secure_behavior": "Session regenerated, cookies HttpOnly/Secure/SameSite, missing CSRF token rejected, repeated failures throttled.",
+   "priority": "P1",
+   "safety_note": "Use test accounts; keep attempt volumes low."
+  },
+  {
+   "id": "DAST-005",
+   "threat_id": "T-006",
+   "component": "Hibernate DAO / Persistence Layer",
+   "test_name": "Injection testing on search inputs",
+   "test_objective": "Verify patient/concept search and filter inputs are not injectable.",
+   "high_level_steps": [
+    "Enumerate search inputs.",
+    "Send benign malformed characters and check for errors/behavior differences.",
+    "Use an authorized DAST scanner in a test environment."
+   ],
+   "expected_secure_behavior": "Inputs treated as data; generic errors only.",
+   "priority": "P1",
+   "safety_note": "Avoid destructive payloads; test DB only."
+  },
+  {
+   "id": "DAST-006",
+   "threat_id": "T-011",
+   "component": "OpenMRS Web Application",
+   "test_name": "XSS testing of stored fields",
+   "test_objective": "Verify stored and reflected data is output-encoded and CSP present.",
+   "high_level_steps": [
+    "Store benign marker strings with HTML metacharacters in name/note fields.",
+    "View them as another user and inspect rendering and CSP headers."
+   ],
+   "expected_secure_behavior": "Markers render as text; CSP and HttpOnly present.",
+   "priority": "P1",
+   "safety_note": "Use inert markers only."
+  },
+  {
+   "id": "DAST-007",
+   "threat_id": "T-007",
+   "component": "HL7 Inbound Processing",
+   "test_name": "HL7 intake authentication and validation",
+   "test_objective": "Verify unauthenticated senders cannot submit HL7 and malformed messages are rejected safely.",
+   "high_level_steps": [
+    "Identify the HL7 intake channel on a test environment.",
+    "Submit a well-formed test message without credentials.",
+    "Submit oversized/malformed samples at low volume."
+   ],
+   "expected_secure_behavior": "Unauthenticated sender rejected; malformed input routed to error queue without crashes.",
+   "priority": "P1",
+   "safety_note": "Synthetic messages; do not flood."
+  },
+  {
+   "id": "DAST-008",
+   "threat_id": "T-014",
+   "component": "OpenMRS Service API (Context + Services)",
+   "test_name": "Order workflow sequencing and ownership testing",
+   "test_objective": "Verify order steps re-check ownership and state.",
+   "high_level_steps": [
+    "Create test orders for two patients.",
+    "Attempt to revise or fulfil an order using another patient's order id.",
+    "Attempt to revise a discontinued order."
+   ],
+   "expected_secure_behavior": "Cross-patient and invalid state transitions are denied.",
+   "priority": "P1",
+   "safety_note": "Test patients only."
+  },
+  {
+   "id": "DAST-009",
+   "threat_id": "T-012",
+   "component": "OpenMRS Web Application",
+   "test_name": "TLS and security header configuration",
+   "test_objective": "Verify HTTPS-only access, strong TLS and security headers.",
+   "high_level_steps": [
+    "Scan TLS configuration of the externally exposed endpoint.",
+    "Check HSTS, CSP and cookie headers."
+   ],
+   "expected_secure_behavior": "TLS 1.2+ only, HSTS and security headers present.",
+   "priority": "P2",
+   "safety_note": "Non-intrusive scanning only."
+  }
+ ],
+ "action_items": [
+  {
+   "id": "A-001",
+   "title": "Lock down the first-run setup wizard",
+   "description": "Restrict wizard to localhost/one-time token; pre-provision properties in deployments.",
+   "mapped_threats": [
+    "T-001"
+   ],
+   "owner": "Unknown",
+   "priority": "P0",
+   "recommended_due": "Before production release",
+   "validation": "DAST-001 passes."
+  },
+  {
+   "id": "A-002",
+   "title": "Add patient/location-scoped authorization",
+   "description": "Layer ownership/care-team checks over @Authorized privileges.",
+   "mapped_threats": [
+    "T-003"
+   ],
+   "owner": "Unknown",
+   "priority": "P0",
+   "recommended_due": "Before production release",
+   "validation": "DAST-003 passes; SAST-001 clean."
+  },
+  {
+   "id": "A-003",
+   "title": "Secure module loading",
+   "description": "Signed modules, allowlisted sources, restricted upload privilege.",
+   "mapped_threats": [
+    "T-004",
+    "T-013"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Next major release",
+   "validation": "Unsigned module install is refused."
+  },
+  {
+   "id": "A-004",
+   "title": "Harden authentication and sessions",
+   "description": "Lockout, MFA, session regeneration, cookie flags, CSRF tokens.",
+   "mapped_threats": [
+    "T-005",
+    "T-002"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Before production release",
+   "validation": "DAST-002 and DAST-004 pass."
+  },
+  {
+   "id": "A-005",
+   "title": "Move secrets out of the runtime properties file",
+   "description": "Use a secret manager or injected environment variables; restrict permissions.",
+   "mapped_threats": [
+    "T-008"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Next major release",
+   "validation": "No plaintext credentials on disk; SAST-005 clean."
+  },
+  {
+   "id": "A-006",
+   "title": "Run SCA and upgrade legacy dependencies",
+   "description": "Replace log4j 1.x bridge and outdated libraries.",
+   "mapped_threats": [
+    "T-010"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Next major release",
+   "validation": "SCA reports no critical/high CVEs."
+  },
+  {
+   "id": "A-007",
+   "title": "Authenticate and validate HL7 intake",
+   "description": "Sender authentication, dedupe, quarantine of ambiguous matches.",
+   "mapped_threats": [
+    "T-007",
+    "T-015"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Before production release",
+   "validation": "DAST-007 passes."
+  },
+  {
+   "id": "A-008",
+   "title": "Enforce order state machine and ownership at every step",
+   "description": "Server-side transitions and per-step ownership checks.",
+   "mapped_threats": [
+    "T-014"
+   ],
+   "owner": "Unknown",
+   "priority": "P1",
+   "recommended_due": "Before production release",
+   "validation": "DAST-008 passes."
+  },
+  {
+   "id": "A-009",
+   "title": "Add TLS and encrypt JDBC",
+   "description": "TLS termination, HSTS, JDBC TLS.",
+   "mapped_threats": [
+    "T-012"
+   ],
+   "owner": "Unknown",
+   "priority": "P2",
+   "recommended_due": "Planned backlog",
+   "validation": "DAST-009 passes."
+  },
+  {
+   "id": "A-010",
+   "title": "Add PHI-safe logging and audit trail",
+   "description": "Mask PHI, audit chart access and privilege denials.",
+   "mapped_threats": [
+    "T-009"
+   ],
+   "owner": "Unknown",
+   "priority": "P2",
+   "recommended_due": "Planned backlog",
+   "validation": "Audit events present for chart reads."
+  },
+  {
+   "id": "A-011",
+   "title": "Add injection and XSS defenses review",
+   "description": "Parameterized queries, output encoding, CSP.",
+   "mapped_threats": [
+    "T-006",
+    "T-011"
+   ],
+   "owner": "Unknown",
+   "priority": "P2",
+   "recommended_due": "Planned backlog",
+   "validation": "DAST-005 and DAST-006 pass; SAST-002/003 clean."
+  }
+ ],
+ "residual_risk": [
+  {
+   "id": "RR-001",
+   "description": "Repo-derived facts are heuristic; authentication, session and enforcement code were not read, so true exploitability of T-003/T-005 is unconfirmed until reviewed.",
+   "severity": "Medium",
+   "accepted_by": "Unknown",
+   "review_date": "2026-12-16"
+  },
+  {
+   "id": "RR-002",
+   "description": "Separately deployed modules (REST, FHIR, UI) are out of scope and may add unassessed attack surface.",
+   "severity": "High",
+   "accepted_by": "Unknown",
+   "review_date": "2026-12-16"
+  }
+ ],
+ "appendix": {
+  "graph": {
+   "metadata": {
+    "system_name": "OpenMRS Core",
+    "schema_version": "1.0",
+    "generated_at": "2026-10-16T12:44:23Z",
+    "generated_by": "Threat Modelling/build_graph.py",
+    "scope": "",
+    "source_artifacts": []
+   },
+   "nodes": [
+    {
+     "id": "C-001",
+     "name": "Anonymous / Remote User",
+     "type": "Actor",
+     "description": "Unauthenticated network caller reaching the OpenMRS web application.",
+     "technology": "Unknown",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Yes",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [],
+     "trust_zone": "Untrusted",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Deployment exposure is not stated in the repo; assumed reachable from a clinic/hospital LAN and possibly the internet."
+     ]
+    },
+    {
+     "id": "C-002",
+     "name": "Clinician / Authenticated User",
+     "type": "UserGroup",
+     "description": "Authenticated OpenMRS users holding role-based privileges (clinicians, data clerks).",
+     "technology": "Unknown",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [],
+     "trust_zone": "Authenticated user",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/src/main/java/org/openmrs/api/UserService.java:175"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Roles/privileges inferred from @Authorized(PrivilegeConstants.*) annotations."
+     ]
+    },
+    {
+     "id": "C-003",
+     "name": "System Administrator",
+     "type": "UserGroup",
+     "description": "Super users / administrators who run setup, DB updates, manage users, scheduler and modules.",
+     "technology": "Unknown",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [],
+     "trust_zone": "Privileged",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:web/src/main/java/org/openmrs/web/filter/update/UpdateFilter.java:59-61"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-004",
+     "name": "OpenMRS Web Application",
+     "type": "WebApplication",
+     "description": "WAR (web + webapp modules) exposing Spring MVC/servlet/JSP UI behind a servlet filter chain; REST/FHIR UI arrive as loadable modules.",
+     "technology": "Java, Spring, javax.servlet/JSP, Velocity",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Session-based (assumed)",
+     "authorization": "Privilege checks via service layer (@Authorized)",
+     "data_classification": [
+      "Patient PHI",
+      "Credentials"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:web/pom.xml, webapp/pom.xml; REPO:Dockerfile:86 (EXPOSE 8080)"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": [
+      "Authentication mechanism assumed from OpenMRS design; no auth code was read."
+     ]
+    },
+    {
+     "id": "C-005",
+     "name": "Startup Filter Chain (Init/Update/Module Filters)",
+     "type": "Application",
+     "description": "Servlet filters that run before Spring: InitializationFilter (first-run setup wizard), UpdateFilter (DB update wizard requiring super-user auth), StartupErrorFilter, ModuleFilter, OpenmrsFilter, CookieClearingFilter, GZIPFilter, JspClassLoaderFilter.",
+     "technology": "Java Servlet Filter, Velocity",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Super-user credentials in UpdateFilter (per Javadoc); none for first-run wizard",
+     "authorization": "Unknown",
+     "data_classification": [
+      "DB credentials",
+      "Admin credentials"
+     ],
+     "trust_zone": "Pre-auth bootstrap",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:web/.../filter/StartupFilter.java:72; InitializationFilter.java:81; UpdateFilter.java:63; module/web/filter/ModuleFilter.java:29"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-006",
+     "name": "OpenMRS Service API (Context + Services)",
+     "type": "Microservice",
+     "description": "api module services (Patient, Encounter, Order, Obs, Concept, User, Administration, Visit...). Methods guarded by @Authorized privileges (626 in api, 31 hl7, 14 scheduler).",
+     "technology": "Java, Spring AOP, Hibernate",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Context-bound user session (assumed)",
+     "authorization": "RBAC via @Authorized(PrivilegeConstants.*)",
+     "data_classification": [
+      "Patient PHI",
+      "Orders",
+      "Clinical observations",
+      "User accounts"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/.../UserService.java:175; PatientService.java:194; OrderService.java:141"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": [
+      "AOP enforcement of @Authorized assumed; enforcement code was not read. Interface annotations only prove declared intent."
+     ]
+    },
+    {
+     "id": "C-007",
+     "name": "Hibernate DAO / Persistence Layer",
+     "type": "BackendService",
+     "description": "Hibernate ORM data access with c3p0 pooling and Lucene indexing.",
+     "technology": "Hibernate, c3p0, hibernate-search",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/pom.xml"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "C-008",
+     "name": "Relational Database",
+     "type": "Database",
+     "description": "Primary datastore; MySQL, PostgreSQL, SQL Server and H2 referenced by setup wizard.",
+     "technology": "MySQL / PostgreSQL / SQL Server / H2",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "DB username/password (assumed)",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient PHI",
+      "Clinical data",
+      "Password hashes",
+      "System settings"
+     ],
+     "trust_zone": "Data",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:web/.../initialization/InitializationFilter.java:85-91"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-009",
+     "name": "Lucene Search Index",
+     "type": "DataStore",
+     "description": "Lucene/Hibernate Search index of patient and concept data.",
+     "technology": "Lucene",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient identifiers",
+      "Patient names"
+     ],
+     "trust_zone": "Data",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/pom.xml"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Index stored on app-server filesystem (assumed)."
+     ]
+    },
+    {
+     "id": "C-010",
+     "name": "Runtime Properties & Application Data Directory",
+     "type": "DataStore",
+     "description": "openmrs-runtime.properties and application data directory (DB settings, modules, logs).",
+     "technology": "Filesystem",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "DB credentials",
+      "Config secrets"
+     ],
+     "trust_zone": "Host",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:InitializationFilter.java:76-79 (runtime properties)"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Credentials stored in a properties file (assumed; not verified)."
+     ]
+    },
+    {
+     "id": "C-011",
+     "name": "Liquibase / DatabaseUpdater",
+     "type": "BackendService",
+     "description": "Runs Liquibase changesets; getDatabaseChanges guarded by @Authorized(GET_DATABASE_CHANGES).",
+     "technology": "Liquibase",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "@Authorized + super-user wizard",
+     "data_classification": [
+      "Schema",
+      "Patient PHI"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/.../util/DatabaseUpdater.java:589"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-012",
+     "name": "Module System (dynamically loaded modules)",
+     "type": "Application",
+     "description": "OpenMRS module loader; .omod modules contribute code, filters, Spring config and privileges, loaded at runtime.",
+     "technology": "Java, Spring",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Admin-only upload (assumed)",
+     "data_classification": [
+      "Platform integrity"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:web/.../module/web/filter/ModuleFilter.java:29"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Signature verification of modules is not evidenced."
+     ]
+    },
+    {
+     "id": "C-013",
+     "name": "HL7 Inbound Processing",
+     "type": "BackendService",
+     "description": "HL7Service: queue, archive, error queue and processing of inbound HL7 v2.x messages (HAPI).",
+     "technology": "HAPI HL7 v2",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "@Authorized(GET_HL7_IN_QUEUE etc.)",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/.../hl7/HL7Service.java:49-456; api/pom.xml (hapi-*)"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-014",
+     "name": "Task Scheduler",
+     "type": "BackendService",
+     "description": "Scheduler service; 14 methods require 'Manage Scheduler'.",
+     "technology": "Unknown",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "@Authorized(\"Manage Scheduler\")",
+     "data_classification": [
+      "Platform integrity"
+     ],
+     "trust_zone": "Application",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO: scheduler module @Authorized entries"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "C-015",
+     "name": "Email / Notification",
+     "type": "ThirdPartyService",
+     "description": "javax.mail based notifications via external SMTP.",
+     "technology": "javax.mail",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Email addresses"
+     ],
+     "trust_zone": "External",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:pom.xml (javax.mail); notification module"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "C-016",
+     "name": "Container Runtime (Docker)",
+     "type": "Container",
+     "description": "Dockerfile builds the web application image exposing 8080.",
+     "technology": "Docker, Tomcat (assumed)",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [],
+     "trust_zone": "Infrastructure",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:Dockerfile:86, :132"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "C-017",
+     "name": "Build & Dependency Supply Chain (Maven)",
+     "type": "CICDPipeline",
+     "description": "Maven build pulling ~115 dependencies incl. log4j 1.2 bridge, log4j-core, commons-fileupload, c3p0, legacy jackson-mapper-asl.",
+     "technology": "Maven",
+     "owner": "Unknown",
+     "environment": "Unknown",
+     "internet_exposed": "No",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [],
+     "trust_zone": "Build",
+     "tags": [],
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:pom.xml dependency list"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": [
+      "Dependency versions not reviewed; SCA required."
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "DF-001",
+     "from": "C-001",
+     "to": "C-004",
+     "relationship": "CALLS",
+     "protocol": "HTTP/HTTPS (8080)",
+     "port": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Credentials",
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:Dockerfile:86"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "TLS termination not described; assumed reverse proxy."
+     ]
+    },
+    {
+     "id": "DF-002",
+     "from": "C-002",
+     "to": "C-004",
+     "relationship": "CALLS",
+     "protocol": "HTTP/HTTPS",
+     "port": "Unknown",
+     "authentication": "Session (assumed)",
+     "authorization": "Privilege-based",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-003",
+     "from": "C-003",
+     "to": "C-005",
+     "relationship": "CALLS",
+     "protocol": "HTTP/HTTPS",
+     "port": "Unknown",
+     "authentication": "Super-user credentials (UpdateFilter Javadoc)",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Admin credentials",
+      "DB credentials"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:UpdateFilter.java:59-61"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-004",
+     "from": "C-001",
+     "to": "C-005",
+     "relationship": "CALLS",
+     "protocol": "HTTP/HTTPS",
+     "port": "Unknown",
+     "authentication": "None on first run (all requests redirected to setup)",
+     "authorization": "Unknown",
+     "data_classification": [
+      "DB credentials",
+      "Admin credentials"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:InitializationFilter.java:76-79"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": [
+      "Wizard is unauthenticated by design before init; exposure window depends on deployment."
+     ]
+    },
+    {
+     "id": "DF-005",
+     "from": "C-004",
+     "to": "C-006",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "Context session",
+     "authorization": "@Authorized AOP",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:UserService.java:175"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-006",
+     "from": "C-006",
+     "to": "C-007",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "N/A",
+     "authorization": "N/A",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-007",
+     "from": "C-007",
+     "to": "C-008",
+     "relationship": "READS_FROM",
+     "protocol": "JDBC",
+     "port": "Unknown",
+     "authentication": "DB credentials",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient PHI",
+      "Credentials"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:api/pom.xml"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "JDBC TLS not evidenced."
+     ]
+    },
+    {
+     "id": "DF-008",
+     "from": "C-007",
+     "to": "C-009",
+     "relationship": "WRITES_TO",
+     "protocol": "Filesystem",
+     "port": "Unknown",
+     "authentication": "OS",
+     "authorization": "OS",
+     "data_classification": [
+      "Patient identifiers"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-009",
+     "from": "C-005",
+     "to": "C-010",
+     "relationship": "WRITES_TO",
+     "protocol": "Filesystem",
+     "port": "Unknown",
+     "authentication": "OS",
+     "authorization": "OS",
+     "data_classification": [
+      "DB credentials"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:InitializationFilter.java:76-79"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-010",
+     "from": "C-005",
+     "to": "C-008",
+     "relationship": "WRITES_TO",
+     "protocol": "JDBC",
+     "port": "Unknown",
+     "authentication": "Admin-supplied DB credentials",
+     "authorization": "Unknown",
+     "data_classification": [
+      "DB credentials",
+      "Schema"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:InitializationFilter.java:85-91"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-011",
+     "from": "C-011",
+     "to": "C-008",
+     "relationship": "WRITES_TO",
+     "protocol": "JDBC",
+     "port": "Unknown",
+     "authentication": "DB credentials",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Schema",
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:DatabaseUpdater.java:589"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-012",
+     "from": "C-005",
+     "to": "C-011",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "Super user",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Schema"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-013",
+     "from": "C-004",
+     "to": "C-012",
+     "relationship": "CALLS",
+     "protocol": "In-process Java / admin upload",
+     "port": "Unknown",
+     "authentication": "Admin (assumed)",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Platform integrity"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:ModuleFilter.java:29"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-014",
+     "from": "C-012",
+     "to": "C-006",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "Context",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:ModuleFilter.java:29"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "Modules run with application privileges; no sandbox evidenced."
+     ]
+    },
+    {
+     "id": "DF-015",
+     "from": "C-001",
+     "to": "C-013",
+     "relationship": "SENDS_DATA_TO",
+     "protocol": "HL7 v2, transport unknown",
+     "port": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:HL7Service.java:49-456"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": [
+      "HL7 transport/auth is likely provided by modules; unknown."
+     ]
+    },
+    {
+     "id": "DF-016",
+     "from": "C-013",
+     "to": "C-006",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "Context",
+     "authorization": "@Authorized GET_HL7_IN_QUEUE",
+     "data_classification": [
+      "Patient PHI"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:HL7Service.java"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-017",
+     "from": "C-014",
+     "to": "C-006",
+     "relationship": "CALLS",
+     "protocol": "In-process Java",
+     "port": "Unknown",
+     "authentication": "Daemon user",
+     "authorization": "@Authorized 'Manage Scheduler'",
+     "data_classification": [
+      "Platform integrity"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "repo_insights"
+      }
+     ],
+     "confidence": "Medium",
+     "assumptions": []
+    },
+    {
+     "id": "DF-018",
+     "from": "C-006",
+     "to": "C-015",
+     "relationship": "SENDS_DATA_TO",
+     "protocol": "SMTP",
+     "port": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Email addresses",
+      "Reset tokens"
+     ],
+     "crosses_trust_boundary": "Yes",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:pom.xml (javax.mail)"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-019",
+     "from": "C-017",
+     "to": "C-016",
+     "relationship": "DEPLOYED_BY",
+     "protocol": "Docker build",
+     "port": "Unknown",
+     "authentication": "Unknown",
+     "authorization": "Unknown",
+     "data_classification": [
+      "Platform integrity"
+     ],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:Dockerfile:86"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    },
+    {
+     "id": "DF-020",
+     "from": "C-016",
+     "to": "C-004",
+     "relationship": "HOSTED_ON",
+     "protocol": "Container",
+     "port": "Unknown",
+     "authentication": "N/A",
+     "authorization": "N/A",
+     "data_classification": [],
+     "crosses_trust_boundary": "No",
+     "encryption_in_transit": "Unknown",
+     "source_refs": [
+      {
+       "source_id": "SRC-001",
+       "section": "REPO:Dockerfile:132"
+      }
+     ],
+     "confidence": "Low",
+     "assumptions": []
+    }
+   ],
+   "risk_patterns": [
+    {
+     "id": "GRP-001",
+     "pattern_key": "internet_exposed_reaches_sensitive_store",
+     "title": "Internet-exposed 'Anonymous / Remote User' can reach data store 'Runtime Properties & Application Data Directory'",
+     "description": "'Anonymous / Remote User' is marked internet-exposed and a forward data-flow path reaches 'Runtime Properties & Application Data Directory' (DataStore) within 2 hop(s). Verify authentication/authorization are enforced at every hop on this path.",
+     "severity": "Critical",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-005",
+       "C-010"
+      ],
+      "edges": [
+       "DF-004",
+       "DF-009"
+      ]
+     },
+     "evidence": [
+      "node C-001 internet_exposed=Yes",
+      "reachable target C-010"
+     ]
+    },
+    {
+     "id": "GRP-002",
+     "pattern_key": "unauthenticated_trust_boundary_crossing",
+     "title": "Trust-boundary-crossing flow with unknown/no authentication: Anonymous / Remote User -> OpenMRS Web Application",
+     "description": "This data flow crosses a trust boundary but its authentication mechanism is undocumented or absent. Treat as unauthenticated until confirmed otherwise.",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-004"
+      ],
+      "edges": [
+       "DF-001"
+      ]
+     },
+     "evidence": [
+      "edge DF-001 crosses_trust_boundary=Yes, authentication=Unknown"
+     ]
+    },
+    {
+     "id": "GRP-003",
+     "pattern_key": "unauthenticated_trust_boundary_crossing",
+     "title": "Trust-boundary-crossing flow with unknown/no authentication: Anonymous / Remote User -> HL7 Inbound Processing",
+     "description": "This data flow crosses a trust boundary but its authentication mechanism is undocumented or absent. Treat as unauthenticated until confirmed otherwise.",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-013"
+      ],
+      "edges": [
+       "DF-015"
+      ]
+     },
+     "evidence": [
+      "edge DF-015 crosses_trust_boundary=Yes, authentication=Unknown"
+     ]
+    },
+    {
+     "id": "GRP-004",
+     "pattern_key": "unauthenticated_trust_boundary_crossing",
+     "title": "Trust-boundary-crossing flow with unknown/no authentication: OpenMRS Service API (Context + Services) -> Email / Notification",
+     "description": "This data flow crosses a trust boundary but its authentication mechanism is undocumented or absent. Treat as unauthenticated until confirmed otherwise.",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-006",
+       "C-015"
+      ],
+      "edges": [
+       "DF-018"
+      ]
+     },
+     "evidence": [
+      "edge DF-018 crosses_trust_boundary=Yes, authentication=Unknown"
+     ]
+    },
+    {
+     "id": "GRP-005",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Anonymous / Remote User -> OpenMRS Web Application",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-004"
+      ],
+      "edges": [
+       "DF-001"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-006",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Clinician / Authenticated User -> OpenMRS Web Application",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-002",
+       "C-004"
+      ],
+      "edges": [
+       "DF-002"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-007",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: System Administrator -> Startup Filter Chain (Init/Update/Module Filters)",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-003",
+       "C-005"
+      ],
+      "edges": [
+       "DF-003"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-008",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Anonymous / Remote User -> Startup Filter Chain (Init/Update/Module Filters)",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-005"
+      ],
+      "edges": [
+       "DF-004"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-009",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Hibernate DAO / Persistence Layer -> Relational Database",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-007",
+       "C-008"
+      ],
+      "edges": [
+       "DF-007"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-010",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Startup Filter Chain (Init/Update/Module Filters) -> Relational Database",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-005",
+       "C-008"
+      ],
+      "edges": [
+       "DF-010"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-011",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Liquibase / DatabaseUpdater -> Relational Database",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-011",
+       "C-008"
+      ],
+      "edges": [
+       "DF-011"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-012",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: Anonymous / Remote User -> HL7 Inbound Processing",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-001",
+       "C-013"
+      ],
+      "edges": [
+       "DF-015"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-013",
+     "pattern_key": "trust_boundary_crossing_without_encryption",
+     "title": "Unconfirmed encryption in transit across trust boundary: OpenMRS Service API (Context + Services) -> Email / Notification",
+     "description": "Data crosses a trust boundary without confirmed transport encryption (encryption_in_transit=Unknown).",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-006",
+       "C-015"
+      ],
+      "edges": [
+       "DF-018"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-014",
+     "pattern_key": "third_party_receives_sensitive_data",
+     "title": "Third party 'Email / Notification' receives data classified as ['Email addresses', 'Reset tokens']",
+     "description": "'OpenMRS Service API (Context + Services)' sends data to third party 'Email / Notification'. Confirm a data processing agreement, minimization, and encryption are in place.",
+     "severity": "High",
+     "graph_refs": {
+      "nodes": [
+       "C-006",
+       "C-015"
+      ],
+      "edges": [
+       "DF-018"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-015",
+     "pattern_key": "frontend_bypasses_gateway_to_internal_service",
+     "title": "'OpenMRS Web Application' calls internal service 'OpenMRS Service API (Context + Services)' directly",
+     "description": "Frontend/mobile clients calling backend services or microservices directly, without an API gateway in the path, bypasses centralized authN/Z, rate limiting, and monitoring.",
+     "severity": "Medium",
+     "graph_refs": {
+      "nodes": [
+       "C-004",
+       "C-006"
+      ],
+      "edges": [
+       "DF-005"
+      ]
+     },
+     "evidence": []
+    },
+    {
+     "id": "GRP-016",
+     "pattern_key": "kubernetes_workload_undocumented_identity",
+     "title": "'Container Runtime (Docker)' has no documented workload identity",
+     "description": "No service-account / workload-identity evidence was extracted. Default service accounts commonly carry broader permissions than required.",
+     "severity": "Medium",
+     "graph_refs": {
+      "nodes": [
+       "C-016"
+      ],
+      "edges": []
+     },
+     "evidence": []
+    }
+   ]
+  },
+  "evidence_mapping": [
+   {
+    "mapping": "SRC-001 repo_insights.json (678 entry points, 9 filters) -> components C-004..C-014"
+   },
+   {
+    "mapping": "SRC-001 UpdateFilter.java:59-63, InitializationFilter.java:76-81 -> T-001, T-002, BP-001, BP-002"
+   },
+   {
+    "mapping": "SRC-001 UserService.java:175, OrderService.java:141, PatientService.java:194 -> T-003, T-014"
+   },
+   {
+    "mapping": "SRC-001 ModuleFilter.java:29 -> T-004"
+   },
+   {
+    "mapping": "SRC-001 HL7Service.java:49-456 -> T-007, T-015"
+   },
+   {
+    "mapping": "SRC-001 pom manifests -> T-010"
+   },
+   {
+    "mapping": "SRC-001 Dockerfile:86,132 -> T-012"
+   },
+   {
+    "mapping": "scripts/analyze_workflows.py WFRP-001..028 -> T-001, T-002, T-007, T-014, T-015"
+   },
+   {
+    "mapping": "scripts/build_graph.py GRP-001..016 -> T-001, T-005, T-007, T-008, T-012"
+   }
+  ]
+ }
+}

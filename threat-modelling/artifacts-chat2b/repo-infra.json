@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-10-19T09:57:14Z",
+  "repo_root": "C:\\Users\\apoorvas\\Desktop\\Chat2B",
+  "files_scanned": 17,
+  "note": "Plain line-pattern scan of Dockerfiles/compose/Kubernetes manifests, not a validating parser -- treat findings as candidates (Low/Medium confidence) to confirm, not confirmed facts. pattern_key values overlap build_graph.py's risk_patterns vocabulary where the concept matches.",
+  "findings": [
+    {
+      "pattern_key": "container_no_non_root_user",
+      "title": "docker/Dockerfile does not declare a non-root USER",
+      "description": "No 'USER <non-root>' instruction found; the container likely runs as root by default, widening the blast radius of any code-execution vulnerability inside it.",
+      "severity": "Medium",
+      "evidence": [
+        "REPO:docker/Dockerfile"
+      ],
+      "id": "REPOINFRA-001"
+    },
+    {
+      "pattern_key": "container_port_exposed",
+      "title": "docker/Dockerfile:10 exposes port(s) 10824",
+      "description": "Documented for cross-reference against the architecture model's internet_exposed fields -- an EXPOSEd port is not necessarily internet-facing, that depends on orchestration/network config.",
+      "severity": "Informational",
+      "evidence": [
+        "REPO:docker/Dockerfile:10"
+      ],
+      "id": "REPOINFRA-002"
+    }
+  ]
+}

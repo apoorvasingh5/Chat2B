@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/security-graph.schema.json",
+  "title": "Security Knowledge Graph Schema",
+  "type": "object",
+  "required": [
+    "metadata",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": [
+        "system_name",
+        "generated_at",
+        "schema_version"
+      ],
+      "properties": {
+        "system_name": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string",
+          "default": "1.0"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generated_by": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "source_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^SRC-[0-9]{3,}$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "diagram",
+                  "pdf",
+                  "html",
+                  "markdown",
+                  "confluence",
+                  "openapi",
+                  "questionnaire",
+                  "other"
+                ]
+              },
+              "location": {
+                "type": "string"
+              },
+              "hash": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^C-[0-9]{3,}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Actor",
+              "UserGroup",
+              "Application",
+              "WebApplication",
+              "MobileApplication",
+              "BackendService",
+              "Microservice",
+              "API",
+              "APIGateway",
+              "Database",
+              "DataStore",
+              "ObjectStorage",
+              "MessageQueue",
+              "EventStream",
+              "IdentityProvider",
+              "AuthorizationServer",
+              "SecretStore",
+              "CloudResource",
+              "Container",
+              "KubernetesCluster",
+              "Function",
+              "NetworkZone",
+              "TrustBoundary",
+              "ThirdPartyService",
+              "AdminInterface",
+              "CICDPipeline",
+              "SourceCodeRepository",
+              "SASTTool",
+              "DASTTool",
+              "MonitoringSystem",
+              "LoggingSystem",
+              "LLMApplication",
+              "LLMModel",
+              "VectorDatabase",
+              "AgentTool",
+              "Other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "owner": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "Production",
+              "Staging",
+              "Development",
+              "Test",
+              "Shared",
+              "Unknown"
+            ]
+          },
+          "internet_exposed": {
+            "type": "string",
+            "enum": [
+              "Yes",
+              "No",
+              "Unknown"
+            ]
+          },
+          "authentication": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "authorization": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "data_classification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trust_zone": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_refs": {
+            "$ref": "#/$defs/sourceRefs"
+          },
+          "confidence": {
+            "$ref": "#/$defs/confidence"
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "from",
+          "to",
+          "relationship",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^DF-[0-9]{3,}$"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "USES",
+              "CALLS",
+              "READS_FROM",
+              "WRITES_TO",
+              "AUTHENTICATES_WITH",
+              "AUTHORIZES_WITH",
+              "HOSTED_ON",
+              "DEPLOYED_BY",
+              "STORES_SECRET_IN",
+              "USES_SECRET",
+              "SENDS_DATA_TO",
+              "RECEIVES_DATA_FROM",
+              "TRAVERSES_TRUST_BOUNDARY",
+              "EXPOSED_TO",
+              "ADMINISTERS",
+              "LOGS_TO",
+              "MONITORED_BY",
+              "SCANNED_BY",
+              "DEPENDS_ON",
+              "RETRIEVES_FROM",
+              "WRITES_MEMORY_TO",
+              "CALLS_TOOL",
+              "OTHER"
+            ]
+          },
+          "protocol": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "port": {
+            "type": [
+              "integer",
+              "string"
+            ],
+            "default": "Unknown"
+          },
+          "authentication": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "authorization": {
+            "type": "string",
+            "default": "Unknown"
+          },
+          "data_classification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "crosses_trust_boundary": {
+            "type": "string",
+            "enum": [
+              "Yes",
+              "No",
+              "Unknown"
+            ]
+          },
+          "encryption_in_transit": {
+            "type": "string",
+            "enum": [
+              "Yes",
+              "No",
+              "Unknown",
+              "Not applicable"
+            ]
+          },
+          "source_refs": {
+            "$ref": "#/$defs/sourceRefs"
+          },
+          "confidence": {
+            "$ref": "#/$defs/confidence"
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "risk_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "graph_refs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^GRP-[0-9]{3,}$"
+          },
+          "pattern_key": {
+            "type": "string",
+            "description": "Stable snake_case identifier for which of build_graph.py's detectors produced this finding (e.g. 'internet_exposed_reaches_sensitive_store'). Used by scripts/map_attack_techniques.py to deterministically attach MITRE ATT&CK technique IDs instead of the model guessing them."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/severity"
+          },
+          "graph_refs": {
+            "$ref": "#/$defs/graphRefs"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low",
+        "Informational"
+      ]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "quote": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "graphRefs": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

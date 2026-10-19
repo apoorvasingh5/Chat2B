@@ -1,0 +1,13 @@
+{
+  "artifact": {
+    "id": "SRC-003",
+    "file_name": "dummy.pdf",
+    "type": "pdf",
+    "location": "C:\\Users\\SourishD\\AppData\\Local\\Temp\\claude\\C--Users-SourishD-OneDrive---Checkmarx-Laptop-Documents-AI-Challenge-TM-Agent\\1cd0a388-cbec-476d-a3d9-dbc2da85093a\\scratchpad\\dummy.pdf",
+    "hash": "5175eef4edf8a752"
+  },
+  "error": "pdf_extraction_failed",
+  "message": "pypdf2 raised: EOF marker not found",
+  "pages": [],
+  "page_count": 0
+}

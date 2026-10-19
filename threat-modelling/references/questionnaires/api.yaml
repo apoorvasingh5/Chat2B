@@ -1,0 +1,89 @@
+# API Security Threat Modelling Questionnaire
+# Aligned to OWASP API Security Top 10:2023 (see threat-frameworks/owasp-top-10-api.md)
+- id: API-SEC-001
+  question: "Provide an inventory of all API endpoints/operations, including internal, partner, and deprecated/shadow APIs."
+  intent: "Establish a complete API inventory; undocumented or shadow APIs (API9:2023) are a common blind spot for security testing."
+
+- id: API-SEC-002
+  question: "What API style(s) are used (REST, GraphQL, gRPC, SOAP, WebSocket, event-driven)?"
+  intent: "Determine the API paradigm to apply the correct threat patterns and testing tooling."
+
+- id: API-SEC-003
+  question: "Is the API versioned? Are older/deprecated versions still reachable in production?"
+  intent: "Unversioned or lingering deprecated versions often carry weaker controls (API9:2023)."
+
+- id: API-SEC-004
+  question: "Is there a machine-readable API specification (OpenAPI/Swagger, GraphQL SDL, protobuf)? Is it kept in sync with the deployed API?"
+  intent: "A current spec enables schema-based fuzzing and drift detection between documented and actual behavior."
+
+- id: API-SEC-005
+  question: "Which operations return or accept object identifiers (IDs, UUIDs, account numbers) directly from the client?"
+  intent: "Identify candidate endpoints for Broken Object Level Authorization / IDOR testing (API1:2023)."
+
+- id: API-SEC-006
+  question: "Is object-level authorization enforced server-side for every operation that accesses a user-owned or tenant-owned resource?"
+  intent: "Confirm ownership checks exist and are not solely inferred from client-supplied context (API1:2023)."
+
+- id: API-SEC-007
+  question: "How is authentication implemented for each API surface (API key, OAuth2, OIDC, mTLS, custom tokens, none)?"
+  intent: "Weak or inconsistent authentication across API surfaces is a top API risk (API2:2023)."
+
+- id: API-SEC-008
+  question: "Are access/refresh tokens short-lived, revocable, and validated (signature, issuer, audience, expiry) on every call?"
+  intent: "Assess token validation rigor to catch broken authentication and token replay risks (API2:2023)."
+
+- id: API-SEC-009
+  question: "Do API responses ever return more object properties/fields than the calling client is authorized to see or modify (e.g., full user object on a partial update)?"
+  intent: "Detect Broken Object Property Level Authorization, including mass assignment and excessive data exposure (API3:2023)."
+
+- id: API-SEC-010
+  question: "Are rate limiting, payload size limits, pagination limits, and timeouts enforced per client/API key/endpoint?"
+  intent: "Absence of resource consumption controls enables cost/availability abuse and brute forcing (API4:2023)."
+
+- id: API-SEC-011
+  question: "Are administrative or privileged operations exposed on the same base path/host as regular user operations, and is function-level authorization enforced independently of object-level checks?"
+  intent: "Broken Function Level Authorization often stems from privileged endpoints being reachable with a regular user's token (API5:2023)."
+
+- id: API-SEC-012
+  question: "Do any endpoints implement sensitive business flows (e.g., checkout, coupon redemption, account creation, money transfer) without abuse-detection controls (CAPTCHA, device fingerprinting, velocity checks)?"
+  intent: "Identify unrestricted access to sensitive business flows that automation/bots could abuse (API6:2023)."
+
+- id: API-SEC-013
+  question: "Do any API operations fetch a remote resource (webhook callback, URL preview, file-by-URL import, SSO metadata fetch) based on a client-supplied URL or hostname?"
+  intent: "Server-Side Request Forgery risk assessment for APIs that make outbound calls on the client's behalf (API7:2023)."
+
+- id: API-SEC-014
+  question: "Are default credentials, debug endpoints, verbose error messages/stack traces, or permissive CORS configurations present on any API surface?"
+  intent: "Security misconfiguration is one of the most common exploited API weaknesses (API8:2023)."
+
+- id: API-SEC-015
+  question: "Are all API hosts/environments (dev, staging, internal, partner) inventoried, and is access to non-production hosts restricted?"
+  intent: "Improper inventory management extends to environments, not just endpoints (API9:2023)."
+
+- id: API-SEC-016
+  question: "Does this API call third-party/upstream APIs? Is data received from them validated and treated as untrusted?"
+  intent: "Unsafe consumption of third-party API responses can introduce injection or data-integrity issues (API10:2023)."
+
+- id: API-SEC-017
+  question: "What authorization model is used for API access (RBAC, ABAC, scopes/claims, per-tenant roles)? Are scopes validated on every call, including for service-to-service calls?"
+  intent: "Confirm a consistent, centrally enforced authorization model rather than ad hoc per-endpoint checks."
+
+- id: API-SEC-018
+  question: "Is API traffic served exclusively over TLS, and is mutual TLS or signed requests used for service-to-service or partner integrations?"
+  intent: "Verify transport security and integrity for both client-facing and internal API traffic."
+
+- id: API-SEC-019
+  question: "Is request/response payload validated against a schema (types, required fields, allowed values, size limits) before business logic executes?"
+  intent: "Schema validation gaps enable injection, mass assignment, and malformed-input denial-of-service."
+
+- id: API-SEC-020
+  question: "Are API keys/secrets/tokens ever embedded in client-side code, mobile app binaries, or URLs/query strings?"
+  intent: "Credentials in client-distributed artifacts or URLs are easily harvested and replayed."
+
+- id: API-SEC-021
+  question: "Is there centralized API logging/monitoring that records caller identity, endpoint, object accessed, and outcome for security-relevant operations?"
+  intent: "Detective control coverage for authorization failures, abuse patterns, and incident investigation."
+
+- id: API-SEC-022
+  question: "Is there an API gateway or centralized policy enforcement point, and which controls (authN, authZ, rate limiting, WAF/schema validation) does it enforce versus the backend service itself?"
+  intent: "Clarify where controls actually live so gaps between gateway-assumed and service-enforced controls are not missed."

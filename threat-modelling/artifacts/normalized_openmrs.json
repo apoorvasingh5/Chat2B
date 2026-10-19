@@ -1,0 +1,1549 @@
+{
+  "system_name": "OpenMRS Core",
+  "components": [
+    {
+      "id": "C-001",
+      "name": "Anonymous / Remote User",
+      "type": "Actor",
+      "description": "Unauthenticated network caller reaching the OpenMRS web application.",
+      "technology": "Unknown",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Yes",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Untrusted",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Deployment exposure is not stated in the repo; assumed reachable from a clinic/hospital LAN and possibly the internet."
+      ]
+    },
+    {
+      "id": "C-002",
+      "name": "Clinician / Authenticated User",
+      "type": "UserGroup",
+      "description": "Authenticated OpenMRS users holding role-based privileges (clinicians, data clerks).",
+      "technology": "Unknown",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Authenticated user",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/src/main/java/org/openmrs/api/UserService.java:175"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Roles/privileges inferred from @Authorized(PrivilegeConstants.*) annotations."
+      ]
+    },
+    {
+      "id": "C-003",
+      "name": "System Administrator",
+      "type": "UserGroup",
+      "description": "Super users / administrators who run setup, DB updates, manage users, scheduler and modules.",
+      "technology": "Unknown",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Privileged",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:web/src/main/java/org/openmrs/web/filter/update/UpdateFilter.java:59-61"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-004",
+      "name": "OpenMRS Web Application",
+      "type": "WebApplication",
+      "description": "WAR (web + webapp modules) exposing Spring MVC/servlet/JSP UI behind a servlet filter chain; REST/FHIR UI arrive as loadable modules.",
+      "technology": "Java, Spring, javax.servlet/JSP, Velocity",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Session-based (assumed)",
+      "authorization": "Privilege checks via service layer (@Authorized)",
+      "data_classification": [
+        "Patient PHI",
+        "Credentials"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:web/pom.xml, webapp/pom.xml; REPO:Dockerfile:86 (EXPOSE 8080)"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Authentication mechanism assumed from OpenMRS design; no auth code was read."
+      ]
+    },
+    {
+      "id": "C-005",
+      "name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "type": "Application",
+      "description": "Servlet filters that run before Spring: InitializationFilter (first-run setup wizard), UpdateFilter (DB update wizard requiring super-user auth), StartupErrorFilter, ModuleFilter, OpenmrsFilter, CookieClearingFilter, GZIPFilter, JspClassLoaderFilter.",
+      "technology": "Java Servlet Filter, Velocity",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Super-user credentials in UpdateFilter (per Javadoc); none for first-run wizard",
+      "authorization": "Unknown",
+      "data_classification": [
+        "DB credentials",
+        "Admin credentials"
+      ],
+      "trust_zone": "Pre-auth bootstrap",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:web/.../filter/StartupFilter.java:72; InitializationFilter.java:81; UpdateFilter.java:63; module/web/filter/ModuleFilter.java:29"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-006",
+      "name": "OpenMRS Service API (Context + Services)",
+      "type": "Microservice",
+      "description": "api module services (Patient, Encounter, Order, Obs, Concept, User, Administration, Visit...). Methods guarded by @Authorized privileges (626 in api, 31 hl7, 14 scheduler).",
+      "technology": "Java, Spring AOP, Hibernate",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Context-bound user session (assumed)",
+      "authorization": "RBAC via @Authorized(PrivilegeConstants.*)",
+      "data_classification": [
+        "Patient PHI",
+        "Orders",
+        "Clinical observations",
+        "User accounts"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/.../UserService.java:175; PatientService.java:194; OrderService.java:141"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "AOP enforcement of @Authorized assumed; enforcement code was not read. Interface annotations only prove declared intent."
+      ]
+    },
+    {
+      "id": "C-007",
+      "name": "Hibernate DAO / Persistence Layer",
+      "type": "BackendService",
+      "description": "Hibernate ORM data access with c3p0 pooling and Lucene indexing.",
+      "technology": "Hibernate, c3p0, hibernate-search",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/pom.xml"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "C-008",
+      "name": "Relational Database",
+      "type": "Database",
+      "description": "Primary datastore; MySQL, PostgreSQL, SQL Server and H2 referenced by setup wizard.",
+      "technology": "MySQL / PostgreSQL / SQL Server / H2",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "DB username/password (assumed)",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient PHI",
+        "Clinical data",
+        "Password hashes",
+        "System settings"
+      ],
+      "trust_zone": "Data",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:web/.../initialization/InitializationFilter.java:85-91"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-009",
+      "name": "Lucene Search Index",
+      "type": "DataStore",
+      "description": "Lucene/Hibernate Search index of patient and concept data.",
+      "technology": "Lucene",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient identifiers",
+        "Patient names"
+      ],
+      "trust_zone": "Data",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/pom.xml"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Index stored on app-server filesystem (assumed)."
+      ]
+    },
+    {
+      "id": "C-010",
+      "name": "Runtime Properties & Application Data Directory",
+      "type": "DataStore",
+      "description": "openmrs-runtime.properties and application data directory (DB settings, modules, logs).",
+      "technology": "Filesystem",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "DB credentials",
+        "Config secrets"
+      ],
+      "trust_zone": "Host",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:InitializationFilter.java:76-79 (runtime properties)"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Credentials stored in a properties file (assumed; not verified)."
+      ]
+    },
+    {
+      "id": "C-011",
+      "name": "Liquibase / DatabaseUpdater",
+      "type": "BackendService",
+      "description": "Runs Liquibase changesets; getDatabaseChanges guarded by @Authorized(GET_DATABASE_CHANGES).",
+      "technology": "Liquibase",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "@Authorized + super-user wizard",
+      "data_classification": [
+        "Schema",
+        "Patient PHI"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/.../util/DatabaseUpdater.java:589"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-012",
+      "name": "Module System (dynamically loaded modules)",
+      "type": "Application",
+      "description": "OpenMRS module loader; .omod modules contribute code, filters, Spring config and privileges, loaded at runtime.",
+      "technology": "Java, Spring",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Admin-only upload (assumed)",
+      "data_classification": [
+        "Platform integrity"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:web/.../module/web/filter/ModuleFilter.java:29"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Signature verification of modules is not evidenced."
+      ]
+    },
+    {
+      "id": "C-013",
+      "name": "HL7 Inbound Processing",
+      "type": "BackendService",
+      "description": "HL7Service: queue, archive, error queue and processing of inbound HL7 v2.x messages (HAPI).",
+      "technology": "HAPI HL7 v2",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "@Authorized(GET_HL7_IN_QUEUE etc.)",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/.../hl7/HL7Service.java:49-456; api/pom.xml (hapi-*)"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-014",
+      "name": "Task Scheduler",
+      "type": "BackendService",
+      "description": "Scheduler service; 14 methods require 'Manage Scheduler'.",
+      "technology": "Unknown",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "@Authorized(\"Manage Scheduler\")",
+      "data_classification": [
+        "Platform integrity"
+      ],
+      "trust_zone": "Application",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO: scheduler module @Authorized entries"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "C-015",
+      "name": "Email / Notification",
+      "type": "ThirdPartyService",
+      "description": "javax.mail based notifications via external SMTP.",
+      "technology": "javax.mail",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Email addresses"
+      ],
+      "trust_zone": "External",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:pom.xml (javax.mail); notification module"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "C-016",
+      "name": "Container Runtime (Docker)",
+      "type": "Container",
+      "description": "Dockerfile builds the web application image exposing 8080.",
+      "technology": "Docker, Tomcat (assumed)",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Infrastructure",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:Dockerfile:86, :132"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "C-017",
+      "name": "Build & Dependency Supply Chain (Maven)",
+      "type": "CICDPipeline",
+      "description": "Maven build pulling ~115 dependencies incl. log4j 1.2 bridge, log4j-core, commons-fileupload, c3p0, legacy jackson-mapper-asl.",
+      "technology": "Maven",
+      "owner": "Unknown",
+      "environment": "Unknown",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Build",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:pom.xml dependency list"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Dependency versions not reviewed; SCA required."
+      ]
+    }
+  ],
+  "data_flows": [
+    {
+      "id": "DF-001",
+      "from_name": "Anonymous / Remote User",
+      "to_name": "OpenMRS Web Application",
+      "relationship": "CALLS",
+      "protocol": "HTTP/HTTPS (8080)",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Credentials",
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:Dockerfile:86"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "TLS termination not described; assumed reverse proxy."
+      ]
+    },
+    {
+      "id": "DF-002",
+      "from_name": "Clinician / Authenticated User",
+      "to_name": "OpenMRS Web Application",
+      "relationship": "CALLS",
+      "protocol": "HTTP/HTTPS",
+      "port": "Unknown",
+      "authentication": "Session (assumed)",
+      "authorization": "Privilege-based",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-003",
+      "from_name": "System Administrator",
+      "to_name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "relationship": "CALLS",
+      "protocol": "HTTP/HTTPS",
+      "port": "Unknown",
+      "authentication": "Super-user credentials (UpdateFilter Javadoc)",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Admin credentials",
+        "DB credentials"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:UpdateFilter.java:59-61"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-004",
+      "from_name": "Anonymous / Remote User",
+      "to_name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "relationship": "CALLS",
+      "protocol": "HTTP/HTTPS",
+      "port": "Unknown",
+      "authentication": "None on first run (all requests redirected to setup)",
+      "authorization": "Unknown",
+      "data_classification": [
+        "DB credentials",
+        "Admin credentials"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:InitializationFilter.java:76-79"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Wizard is unauthenticated by design before init; exposure window depends on deployment."
+      ]
+    },
+    {
+      "id": "DF-005",
+      "from_name": "OpenMRS Web Application",
+      "to_name": "OpenMRS Service API (Context + Services)",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "Context session",
+      "authorization": "@Authorized AOP",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:UserService.java:175"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-006",
+      "from_name": "OpenMRS Service API (Context + Services)",
+      "to_name": "Hibernate DAO / Persistence Layer",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "N/A",
+      "authorization": "N/A",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-007",
+      "from_name": "Hibernate DAO / Persistence Layer",
+      "to_name": "Relational Database",
+      "relationship": "READS_FROM",
+      "protocol": "JDBC",
+      "port": "Unknown",
+      "authentication": "DB credentials",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient PHI",
+        "Credentials"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/pom.xml"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "JDBC TLS not evidenced."
+      ]
+    },
+    {
+      "id": "DF-008",
+      "from_name": "Hibernate DAO / Persistence Layer",
+      "to_name": "Lucene Search Index",
+      "relationship": "WRITES_TO",
+      "protocol": "Filesystem",
+      "port": "Unknown",
+      "authentication": "OS",
+      "authorization": "OS",
+      "data_classification": [
+        "Patient identifiers"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-009",
+      "from_name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "to_name": "Runtime Properties & Application Data Directory",
+      "relationship": "WRITES_TO",
+      "protocol": "Filesystem",
+      "port": "Unknown",
+      "authentication": "OS",
+      "authorization": "OS",
+      "data_classification": [
+        "DB credentials"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:InitializationFilter.java:76-79"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-010",
+      "from_name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "to_name": "Relational Database",
+      "relationship": "WRITES_TO",
+      "protocol": "JDBC",
+      "port": "Unknown",
+      "authentication": "Admin-supplied DB credentials",
+      "authorization": "Unknown",
+      "data_classification": [
+        "DB credentials",
+        "Schema"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:InitializationFilter.java:85-91"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-011",
+      "from_name": "Liquibase / DatabaseUpdater",
+      "to_name": "Relational Database",
+      "relationship": "WRITES_TO",
+      "protocol": "JDBC",
+      "port": "Unknown",
+      "authentication": "DB credentials",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Schema",
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:DatabaseUpdater.java:589"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-012",
+      "from_name": "Startup Filter Chain (Init/Update/Module Filters)",
+      "to_name": "Liquibase / DatabaseUpdater",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "Super user",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Schema"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-013",
+      "from_name": "OpenMRS Web Application",
+      "to_name": "Module System (dynamically loaded modules)",
+      "relationship": "CALLS",
+      "protocol": "In-process Java / admin upload",
+      "port": "Unknown",
+      "authentication": "Admin (assumed)",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Platform integrity"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:ModuleFilter.java:29"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-014",
+      "from_name": "Module System (dynamically loaded modules)",
+      "to_name": "OpenMRS Service API (Context + Services)",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "Context",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:ModuleFilter.java:29"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "Modules run with application privileges; no sandbox evidenced."
+      ]
+    },
+    {
+      "id": "DF-015",
+      "from_name": "Anonymous / Remote User",
+      "to_name": "HL7 Inbound Processing",
+      "relationship": "SENDS_DATA_TO",
+      "protocol": "HL7 v2, transport unknown",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:HL7Service.java:49-456"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": [
+        "HL7 transport/auth is likely provided by modules; unknown."
+      ]
+    },
+    {
+      "id": "DF-016",
+      "from_name": "HL7 Inbound Processing",
+      "to_name": "OpenMRS Service API (Context + Services)",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "Context",
+      "authorization": "@Authorized GET_HL7_IN_QUEUE",
+      "data_classification": [
+        "Patient PHI"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:HL7Service.java"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-017",
+      "from_name": "Task Scheduler",
+      "to_name": "OpenMRS Service API (Context + Services)",
+      "relationship": "CALLS",
+      "protocol": "In-process Java",
+      "port": "Unknown",
+      "authentication": "Daemon user",
+      "authorization": "@Authorized 'Manage Scheduler'",
+      "data_classification": [
+        "Platform integrity"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "repo_insights"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "DF-018",
+      "from_name": "OpenMRS Service API (Context + Services)",
+      "to_name": "Email / Notification",
+      "relationship": "SENDS_DATA_TO",
+      "protocol": "SMTP",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Email addresses",
+        "Reset tokens"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:pom.xml (javax.mail)"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-019",
+      "from_name": "Build & Dependency Supply Chain (Maven)",
+      "to_name": "Container Runtime (Docker)",
+      "relationship": "DEPLOYED_BY",
+      "protocol": "Docker build",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Platform integrity"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:Dockerfile:86"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "DF-020",
+      "from_name": "Container Runtime (Docker)",
+      "to_name": "OpenMRS Web Application",
+      "relationship": "HOSTED_ON",
+      "protocol": "Container",
+      "port": "Unknown",
+      "authentication": "N/A",
+      "authorization": "N/A",
+      "data_classification": [],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:Dockerfile:132"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    }
+  ],
+  "trust_boundaries": [
+    {
+      "id": "TB-001",
+      "name": "Internet/LAN to OpenMRS Web App",
+      "description": "Untrusted clients to the application web tier.",
+      "applies_to": [
+        "Anonymous / Remote User",
+        "Clinician / Authenticated User",
+        "OpenMRS Web Application",
+        "Startup Filter Chain (Init/Update/Module Filters)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:Dockerfile:86"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "TB-002",
+      "name": "Pre-auth bootstrap to privileged setup",
+      "description": "First-run and update wizards run before Spring/auth is available.",
+      "applies_to": [
+        "Startup Filter Chain (Init/Update/Module Filters)",
+        "System Administrator"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:StartupFilter.java:72"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "TB-003",
+      "name": "App tier to Data tier",
+      "description": "JDBC and local storage of index/config.",
+      "applies_to": [
+        "Hibernate DAO / Persistence Layer",
+        "Relational Database",
+        "Lucene Search Index",
+        "Runtime Properties & Application Data Directory"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/pom.xml"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "TB-004",
+      "name": "Core platform to third-party modules",
+      "description": "Dynamically loaded modules run in-process with the service API.",
+      "applies_to": [
+        "Module System (dynamically loaded modules)",
+        "OpenMRS Service API (Context + Services)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:ModuleFilter.java:29"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    },
+    {
+      "id": "TB-005",
+      "name": "Application to external messaging",
+      "description": "SMTP and HL7 sources outside the platform.",
+      "applies_to": [
+        "Email / Notification",
+        "HL7 Inbound Processing"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:pom.xml, HL7Service.java"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    }
+  ],
+  "security_controls": [
+    {
+      "id": "SC-001",
+      "name": "Privilege-based authorization (@Authorized)",
+      "description": "626 api, 31 hl7 and 14 scheduler methods declare required privileges via @Authorized.",
+      "applies_to": [
+        "OpenMRS Service API (Context + Services)",
+        "HL7 Inbound Processing",
+        "Task Scheduler"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:UserService.java:175"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "SC-002",
+      "name": "Super-user authentication for DB update wizard",
+      "description": "UpdateFilter asks a super user to authenticate and review changesets before running updates.",
+      "applies_to": [
+        "Startup Filter Chain (Init/Update/Module Filters)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:UpdateFilter.java:59-61"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    },
+    {
+      "id": "SC-003",
+      "name": "Hibernate ORM / validator",
+      "description": "Hibernate ORM and hibernate-validator present; parameterized queries assumed.",
+      "applies_to": [
+        "Hibernate DAO / Persistence Layer"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "REPO:api/pom.xml"
+        }
+      ],
+      "confidence": "Low",
+      "assumptions": []
+    }
+  ],
+  "business_workflows": [
+    {
+      "id": "BP-001",
+      "name": "First-Run Installation Wizard",
+      "goal": "Initialize DB, schema, admin user and runtime properties on first start.",
+      "initiating_actor": "Anonymous / Remote User",
+      "steps": [
+        {
+          "id": "S1",
+          "name": "Access setup wizard (all requests redirected)",
+          "component": "Startup Filter Chain (Init/Update/Module Filters)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "No runtime properties file found"
+          ],
+          "state_change": "No",
+          "state_change_description": "",
+          "client_supplied_fields": [],
+          "authorization_check": "Unknown",
+          "idempotency_required": "No",
+          "reversible": "Yes",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S2",
+          "name": "Supply DB connection and admin DB credentials",
+          "component": "Startup Filter Chain (Init/Update/Module Filters)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S1"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "Creates DB and writes runtime properties",
+          "client_supplied_fields": [
+            "database host",
+            "db username/password",
+            "admin user password"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "No",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S3",
+          "name": "Run Liquibase schema/demo data and create admin user",
+          "component": "Liquibase / DatabaseUpdater",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S2"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "Schema creation and admin account creation",
+          "client_supplied_fields": [
+            "admin password",
+            "demo-data option"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "No",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        }
+      ],
+      "invariants": [
+        {
+          "id": "INV-001",
+          "statement": "The setup wizard must be unreachable once the system is initialized.",
+          "enforced_by_step": "Unknown",
+          "confidence": "Low"
+        }
+      ],
+      "source_refs": [
+        "REPO:InitializationFilter.java:76-81"
+      ],
+      "confidence": "Low"
+    },
+    {
+      "id": "BP-002",
+      "name": "Database Update Wizard",
+      "goal": "Review and apply pending Liquibase changesets after an upgrade.",
+      "initiating_actor": "System Administrator",
+      "steps": [
+        {
+          "id": "S1",
+          "name": "Super user authenticates",
+          "component": "Startup Filter Chain (Init/Update/Module Filters)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "Pending updates"
+          ],
+          "state_change": "No",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "username",
+            "password"
+          ],
+          "authorization_check": "Yes",
+          "idempotency_required": "No",
+          "reversible": "Yes",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S2",
+          "name": "Review pending changesets",
+          "component": "Startup Filter Chain (Init/Update/Module Filters)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S1"
+          ],
+          "state_change": "No",
+          "state_change_description": "",
+          "client_supplied_fields": [],
+          "authorization_check": "Unknown",
+          "idempotency_required": "No",
+          "reversible": "Yes",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "Yes",
+          "source_refs": []
+        },
+        {
+          "id": "S3",
+          "name": "Execute updates",
+          "component": "Liquibase / DatabaseUpdater",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S2"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "Applies schema changes",
+          "client_supplied_fields": [
+            "confirmation"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "No",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        }
+      ],
+      "invariants": [
+        {
+          "id": "INV-002",
+          "statement": "Only an authenticated super user may trigger DB updates; S3 must re-verify the session from S1.",
+          "enforced_by_step": "Unknown",
+          "confidence": "Low"
+        }
+      ],
+      "source_refs": [
+        "REPO:UpdateFilter.java:59-63"
+      ],
+      "confidence": "Medium"
+    },
+    {
+      "id": "BP-003",
+      "name": "Clinical Order Lifecycle",
+      "goal": "Place, revise, discontinue and fulfil clinical orders for a patient encounter.",
+      "initiating_actor": "Clinician / Authenticated User",
+      "steps": [
+        {
+          "id": "S1",
+          "name": "Create encounter/visit",
+          "component": "OpenMRS Service API (Context + Services)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "Authenticated user"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "patient id",
+            "provider"
+          ],
+          "authorization_check": "Yes",
+          "idempotency_required": "Yes",
+          "reversible": "Unknown",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S2",
+          "name": "Save order (new/revise/discontinue)",
+          "component": "OpenMRS Service API (Context + Services)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S1"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "patient",
+            "concept",
+            "dosing",
+            "orderer",
+            "dates"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "Yes",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S3",
+          "name": "Fulfil / discontinue order",
+          "component": "OpenMRS Service API (Context + Services)",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S2"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "order id",
+            "fulfiller status"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "Unknown",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        }
+      ],
+      "invariants": [
+        {
+          "id": "INV-003",
+          "statement": "A user may act only on patients/locations they are permitted to access; ownership must be re-checked at every step.",
+          "enforced_by_step": "Unknown",
+          "confidence": "Low"
+        },
+        {
+          "id": "INV-004",
+          "statement": "A discontinued or voided order cannot be revised or fulfilled.",
+          "enforced_by_step": "Unknown",
+          "confidence": "Low"
+        }
+      ],
+      "source_refs": [
+        "REPO:OrderService.java:141-1028 (@Authorized)"
+      ],
+      "confidence": "Low"
+    },
+    {
+      "id": "BP-004",
+      "name": "HL7 Message Intake and Processing",
+      "goal": "Accept inbound HL7 messages, queue, process into clinical records, archive or error-queue.",
+      "initiating_actor": "Anonymous / Remote User",
+      "steps": [
+        {
+          "id": "S1",
+          "name": "Queue inbound HL7 message",
+          "component": "HL7 Inbound Processing",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "Message received"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "HL7 message body"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "Unknown",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S2",
+          "name": "Parse and process into patient records",
+          "component": "HL7 Inbound Processing",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S1"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [
+            "patient match keys",
+            "observation values"
+          ],
+          "authorization_check": "Unknown",
+          "idempotency_required": "Yes",
+          "reversible": "No",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        },
+        {
+          "id": "S3",
+          "name": "Archive or move to error queue",
+          "component": "HL7 Inbound Processing",
+          "graph_edge_refs": [],
+          "preconditions": [
+            "S2"
+          ],
+          "state_change": "Yes",
+          "state_change_description": "",
+          "client_supplied_fields": [],
+          "authorization_check": "Yes",
+          "idempotency_required": "Yes",
+          "reversible": "Unknown",
+          "rate_limited": "Unknown",
+          "confirms_or_reviews": "No",
+          "source_refs": []
+        }
+      ],
+      "invariants": [
+        {
+          "id": "INV-005",
+          "statement": "Each HL7 message is processed exactly once and attributed to the correct patient.",
+          "enforced_by_step": "Unknown",
+          "confidence": "Low"
+        }
+      ],
+      "source_refs": [
+        "REPO:HL7Service.java:49-456"
+      ],
+      "confidence": "Low"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "UNK-001",
+      "topic": "Authentication & session mechanism",
+      "description": "Password hashing, lockout, session fixation, CSRF defenses and MFA not determined.",
+      "applies_to": [
+        "OpenMRS Web Application"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-002",
+      "topic": "Network exposure of setup/update wizards",
+      "description": "Whether wizards are reachable by untrusted users after deployment.",
+      "applies_to": [
+        "Startup Filter Chain (Init/Update/Module Filters)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-003",
+      "topic": "Module trust model",
+      "description": "Whether uploaded modules are signed/validated and who may upload them.",
+      "applies_to": [
+        "Module System (dynamically loaded modules)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-004",
+      "topic": "HL7 intake transport and authentication",
+      "description": "How HL7 messages reach the queue.",
+      "applies_to": [
+        "HL7 Inbound Processing"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-005",
+      "topic": "Secrets management",
+      "description": "Where DB credentials/admin passwords are stored and protected.",
+      "applies_to": [
+        "Runtime Properties & Application Data Directory"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-006",
+      "topic": "Data classification and encryption at rest",
+      "description": "PHI/PII encryption at rest.",
+      "applies_to": [
+        "Relational Database"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-007",
+      "topic": "Audit logging",
+      "description": "Audit of PHI reads and privilege denials.",
+      "applies_to": [
+        "OpenMRS Service API (Context + Services)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-008",
+      "topic": "REST/FHIR API surface",
+      "description": "REST and FHIR APIs live in separate modules, outside this repo evidence.",
+      "applies_to": [
+        "OpenMRS Web Application"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    },
+    {
+      "id": "UNK-009",
+      "topic": "Deployment topology",
+      "description": "TLS termination, reverse proxy, container hardening.",
+      "applies_to": [
+        "Container Runtime (Docker)"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "coverage"
+        }
+      ]
+    }
+  ],
+  "name_index": {
+    "anonymousremoteuser": "C-001",
+    "clinicianauthenticateduser": "C-002",
+    "systemadministrator": "C-003",
+    "openmrswebapplication": "C-004",
+    "startupfilterchaininitupdatemodulefilters": "C-005",
+    "openmrsserviceapicontextservices": "C-006",
+    "hibernatedaopersistencelayer": "C-007",
+    "relationaldatabase": "C-008",
+    "lucenesearchindex": "C-009",
+    "runtimepropertiesapplicationdatadirectory": "C-010",
+    "liquibasedatabaseupdater": "C-011",
+    "modulesystemdynamicallyloadedmodules": "C-012",
+    "hl7inboundprocessing": "C-013",
+    "taskscheduler": "C-014",
+    "emailnotification": "C-015",
+    "containerruntimedocker": "C-016",
+    "builddependencysupplychainmaven": "C-017"
+  },
+  "unresolved_data_flow_endpoints": [],
+  "warnings": []
+}

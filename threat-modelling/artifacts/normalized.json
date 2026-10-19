@@ -1,0 +1,417 @@
+{
+  "system_name": "Mobile Banking Platform",
+  "components": [
+    {
+      "id": "C-001",
+      "name": "Mobile App",
+      "type": "MobileApplication",
+      "description": "iOS/Android app used by retail customers to check balances and move money.",
+      "technology": "iOS / Android native",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Untrusted client",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Overview"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "C-002",
+      "name": "API Gateway",
+      "type": "APIGateway",
+      "description": "Single internet-facing entry point that fronts the Account API.",
+      "technology": "Kong",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "Yes",
+      "authentication": "OAuth2",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "DMZ",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Overview"
+        },
+        {
+          "source_id": "SRC-001",
+          "section": "Components"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "C-003",
+      "name": "Account API",
+      "type": "API",
+      "description": "Internal service handling account balance and transfer operations.",
+      "technology": "Java / Spring Boot",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Internal",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Components"
+        },
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Authorization model for object-level access is not documented (see Known Gaps)."
+      ]
+    },
+    {
+      "id": "C-004",
+      "name": "Account Database",
+      "type": "Database",
+      "description": "Stores customer account balances and PII.",
+      "technology": "PostgreSQL",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "No",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Customer PII",
+        "Account Balance"
+      ],
+      "trust_zone": "Internal",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Components"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "C-005",
+      "name": "Notification Service",
+      "type": "ThirdPartyService",
+      "description": "Third-party vendor that sends transaction alerts by SMS and email.",
+      "technology": "Third-party SMS/email vendor",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "External",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Third-Party Integrations"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "C-006",
+      "name": "Admin Portal",
+      "type": "AdminInterface",
+      "description": "Internal React app used by support staff to look up accounts.",
+      "technology": "Internal React app",
+      "owner": "Unknown",
+      "environment": "Production",
+      "internet_exposed": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "trust_zone": "Unknown",
+      "tags": [],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Components"
+        },
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Network exposure is not documented; may be reachable from the general corporate network rather than a restricted admin VLAN."
+      ]
+    }
+  ],
+  "data_flows": [
+    {
+      "id": "DF-001",
+      "from_name": "Mobile App",
+      "to_name": "API Gateway",
+      "relationship": "CALLS",
+      "protocol": "HTTPS",
+      "port": "Unknown",
+      "authentication": "OAuth2",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Yes",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "DF-002",
+      "from_name": "API Gateway",
+      "to_name": "Account API",
+      "relationship": "CALLS",
+      "protocol": "HTTPS",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Yes",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "DF-003",
+      "from_name": "Account API",
+      "to_name": "Account Database",
+      "relationship": "READS_FROM",
+      "protocol": "SQL",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Customer PII",
+        "Account Balance"
+      ],
+      "crosses_trust_boundary": "No",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "DF-004",
+      "from_name": "Mobile App",
+      "to_name": "Account Database",
+      "relationship": "WRITES_TO",
+      "protocol": "Unknown",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Customer PII",
+        "Account Balance"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        },
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": [
+        "Legacy offline-sync path predates the API Gateway and has not been reviewed for authentication or authorization."
+      ]
+    },
+    {
+      "id": "DF-005",
+      "from_name": "Account API",
+      "to_name": "Notification Service",
+      "relationship": "SENDS_DATA_TO",
+      "protocol": "HTTPS",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Customer PII"
+      ],
+      "crosses_trust_boundary": "Yes",
+      "encryption_in_transit": "Yes",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Third-Party Integrations"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "DF-006",
+      "from_name": "Admin Portal",
+      "to_name": "Account Database",
+      "relationship": "ADMINISTERS",
+      "protocol": "HTTPS",
+      "port": "Unknown",
+      "authentication": "Unknown",
+      "authorization": "Unknown",
+      "data_classification": [
+        "Customer PII",
+        "Account Balance"
+      ],
+      "crosses_trust_boundary": "Unknown",
+      "encryption_in_transit": "Unknown",
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    }
+  ],
+  "trust_boundaries": [
+    {
+      "id": "TB-001",
+      "name": "Internet to DMZ",
+      "description": "Boundary between the public internet and the API Gateway.",
+      "applies_to": [
+        "Mobile App",
+        "API Gateway"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Overview"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    },
+    {
+      "id": "TB-002",
+      "name": "DMZ to Internal Network",
+      "description": "Boundary between the API Gateway and internal services (Account API, Account Database).",
+      "applies_to": [
+        "API Gateway",
+        "Account API",
+        "Account Database"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Overview"
+        }
+      ],
+      "confidence": "Medium",
+      "assumptions": []
+    }
+  ],
+  "security_controls": [
+    {
+      "id": "SC-001",
+      "name": "OAuth2 authentication at API Gateway",
+      "description": "The API Gateway authenticates mobile app requests using OAuth2.",
+      "applies_to": [
+        "API Gateway"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Data Flow"
+        }
+      ],
+      "confidence": "High",
+      "assumptions": []
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "UNK-001",
+      "topic": "Account API authorization model",
+      "description": "It is unclear whether the Account API enforces object-level authorization on every account lookup, or relies solely on the API Gateway's OAuth2 token.",
+      "applies_to": [
+        "Account API"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ]
+    },
+    {
+      "id": "UNK-002",
+      "topic": "Admin Portal network exposure",
+      "description": "Admin Portal network exposure is not documented; it may be reachable from the general corporate network rather than a restricted admin VLAN.",
+      "applies_to": [
+        "Admin Portal"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ]
+    },
+    {
+      "id": "UNK-003",
+      "topic": "Legacy mobile-to-database sync path",
+      "description": "The legacy mobile-to-database offline sync path predates the API Gateway and has not been reviewed for authentication or authorization.",
+      "applies_to": [
+        "Mobile App",
+        "Account Database"
+      ],
+      "source_refs": [
+        {
+          "source_id": "SRC-001",
+          "section": "Known Gaps"
+        }
+      ]
+    }
+  ],
+  "name_index": {
+    "mobileapp": "C-001",
+    "apigateway": "C-002",
+    "accountapi": "C-003",
+    "accountdatabase": "C-004",
+    "notificationservice": "C-005",
+    "adminportal": "C-006"
+  },
+  "unresolved_data_flow_endpoints": [],
+  "warnings": []
+}
