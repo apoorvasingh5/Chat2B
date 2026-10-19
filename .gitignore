@@ -16,6 +16,10 @@
 ### Visual Studio Code ###
 package-lock.json
 
+### cxbot ###
+# the bot needs its lockfile at the repo root for npm ci
+!/package-lock.json
+
 ### Mac
 .DS_Store
 /chat2db-server/ali-dbhub-server-start/src/main/resources/static/front/*

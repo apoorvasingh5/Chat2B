@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Checkmarx One SAST",
+          "rules": [
+            {
+              "id": "sql-injection",
+              "name": "SqlInjection",
+              "shortDescription": { "text": "SQL Injection" },
+              "help": { "text": "Use parameterized queries or an ORM to separate code from data." },
+              "helpUri": "https://checkmarx.com/knowledge/knowledge-articles/sql-injection/",
+              "properties": {
+                "tags": ["external/cwe/cwe-89", "security"],
+                "security-severity": "9.1"
+              }
+            },
+            {
+              "id": "xss-reflected",
+              "name": "ReflectedXss",
+              "shortDescription": { "text": "Reflected Cross-Site Scripting" },
+              "helpUri": "https://checkmarx.com/knowledge/knowledge-articles/xss/",
+              "properties": {
+                "tags": ["external/cwe/cwe-79"],
+                "security-severity": "6.1"
+              }
+            },
+            {
+              "id": "weak-hash",
+              "name": "UseOfWeakHash",
+              "shortDescription": { "text": "Use of Weak Hash" },
+              "properties": {
+                "tags": ["external/cwe/cwe-327"],
+                "security-severity": "3.0"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "sql-injection",
+          "level": "error",
+          "baselineState": "new",
+          "message": {
+            "text": "User-controlled input from request.getParameter flows into a concatenated SQL query."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/cx/App.java" },
+                "region": { "startLine": 87 }
+              }
+            }
+          ],
+          "properties": { "severity": "High" }
+        },
+        {
+          "ruleId": "xss-reflected",
+          "level": "warning",
+          "baselineState": "unchanged",
+          "message": {
+            "text": "Request parameter is reflected into an HTML response without encoding."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/web/Search.jsx" },
+                "region": { "startLine": 33 }
+              }
+            }
+          ],
+          "properties": { "severity": "Medium" }
+        },
+        {
+          "ruleId": "weak-hash",
+          "level": "note",
+          "baselineState": "new",
+          "message": { "text": "MD5 used to hash user passwords." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/crypto/Hasher.java" },
+                "region": { "startLine": 12 }
+              }
+            }
+          ],
+          "properties": { "severity": "Low" }
+        }
+      ]
+    }
+  ]
+}
