@@ -1,0 +1,132 @@
+# Web Application Security Threat Modelling Questionnaire
+- id: WEB-SEC-001
+  question: "Describe the architecture of the application (Web-App, API, Microservices, Executable, Mobile, Other)."
+  intent: "Understand the application architecture to identify relevant threat models and security considerations."
+
+- id: WEB-SEC-002
+  question: "Should the application be compliant with any standard? Specify the same (if applicable: PCI, OWASP, HIPAA, SANS, etc.)."
+  intent: "Identify regulatory and compliance requirements that should drive security controls."
+
+- id: WEB-SEC-003
+  question: "Do you have any folder/file that should be excluded from the scan? Specify the same."
+  intent: "Document scope boundaries and exclusions to ensure appropriate security testing coverage."
+
+- id: WEB-SEC-004
+  question: "In which technologies/frameworks is the Front End implemented (None, Native Javascript, ReactJs, Vue.js, WinForms, WPF, Swing, JSP, etc.)?"
+  intent: "Determine frontend technologies to assess relevant front-end specific security threats."
+
+- id: WEB-SEC-005
+  question: "In which technologies/frameworks is the Back End implemented (None, NodeJs, Java, C#, PHP, C, C++, etc.)?"
+  intent: "Understand backend technologies to evaluate backend-specific vulnerabilities and security patterns."
+
+- id: WEB-SEC-006
+  question: "Which database/s is being used (MS-SQL, MySql, NoSql, ORM framework, etc.)?"
+  intent: "Identify database technologies to assess database-specific security risks and injection vulnerabilities."
+
+- id: WEB-SEC-007
+  question: "Does the application have any open source/3rd party libraries? Specify a list with the most important ones with specific versions."
+  intent: "Evaluate the risk of known vulnerabilities in third-party dependencies and supply chain security."
+
+- id: WEB-SEC-008
+  question: "How is authentication implemented? Is it being handled by the framework, or do you have a custom implementation (None, DB Lookup, AD/LDAP, SAML, OpenID, OAuth2, etc.)?"
+  intent: "Assess the authentication mechanism for potential weaknesses and secure implementation practices."
+
+- id: WEB-SEC-009
+  question: "Do you have any password generation mechanism implemented? How are the passwords stored (Cleartext, Salted + Hashed, Encrypted, etc.)?"
+  intent: "Verify that password storage follows secure practices and prevents unauthorized access to credentials."
+
+- id: WEB-SEC-010
+  question: "Is there a recovery password mechanism? Describe how it works."
+  intent: "Evaluate password recovery flows for security risks and potential account takeover vulnerabilities."
+
+- id: WEB-SEC-011
+  question: "Does the application have a defined timeout for the user session? Is the session identifier renewed (e.g., when the user returns to the website or uses an old session)?"
+  intent: "Ensure session management practices prevent session fixation and unauthorized session reuse."
+
+- id: WEB-SEC-012
+  question: "Are relevant application cookies protected by directives such as HttpOnly, Secure, and SameSite flags?"
+  intent: "Verify that session and authentication cookies are protected against XSS and CSRF attacks."
+
+- id: WEB-SEC-013
+  question: "Do you use a CSRF token to validate the origin of requests?"
+  intent: "Verify that the application implements CSRF protection mechanisms for state-changing operations."
+
+- id: WEB-SEC-014
+  question: "Does the authentication system limit the number of times a user can try to log in/sign in/log on?"
+  intent: "Ensure brute force attack protections are in place to prevent unauthorized access through password guessing."
+
+- id: WEB-SEC-015
+  question: "Does the application have more than 1 user type?"
+  intent: "Determine if multi-role access control is needed and assess role-based security requirements."
+
+- id: WEB-SEC-016
+  question: "What kind of authorization does the application implement (RBAC, ABAC, Permission based AC, Location, etc.)?"
+  intent: "Evaluate the authorization model to ensure proper access control enforcement."
+
+- id: WEB-SEC-017
+  question: "Are there any roles or privileges defined? If yes, can you please describe them?"
+  intent: "Document defined roles and privileges to assess privilege escalation risks and proper access control boundaries."
+
+- id: WEB-SEC-018
+  question: "Can you please identify the UI inputs (Html, WPF, WinForms, Android, iOS, etc.)?"
+  intent: "Identify all input vectors to ensure comprehensive input validation and sanitization coverage."
+
+- id: WEB-SEC-019
+  question: "Can users upload/load files into the application? What are the allowed file extension types?"
+  intent: "Assess file upload functionality for malicious file upload, path traversal, and code execution risks."
+
+- id: WEB-SEC-020
+  question: "Does the application receive inputs from databases, file systems, API endpoints (REST/SOAP), message brokers, and any other external services that the code interacts with?"
+  intent: "Identify all external data sources to ensure proper validation of all untrusted inputs."
+
+- id: WEB-SEC-021
+  question: "Which logging technology is implemented (log4J, Log4Net, Splunk, CSV System File, etc.)?"
+  intent: "Understand logging infrastructure to assess audit trail capabilities and security event tracking."
+
+- id: WEB-SEC-022
+  question: "Do you have different types of logging (debug, warning, error, info)? Please describe the procedure of auditing an issue in production."
+  intent: "Verify that appropriate logging levels are used and procedures exist for security incident investigation."
+
+- id: WEB-SEC-023
+  question: "Does the application store any sensitive information in the logs? What kind of sensitive information (PII, Password, Session Id, etc.)?"
+  intent: "Ensure that sensitive data is not exposed through logging mechanisms where it could be discovered."
+
+- id: WEB-SEC-024
+  question: "Are all user transactions/operations logged? Does the log capture enough data to understand what happened in the past?"
+  intent: "Verify comprehensive audit logging to support forensics and accountability for security incidents."
+
+- id: WEB-SEC-025
+  question: "Do you generate security-related random numbers (passwords, session ids, keys that identify or give access to a resource)?"
+  intent: "Assess the use of cryptographically secure random number generation for security-critical functions."
+
+- id: WEB-SEC-026
+  question: "Does the application use or implement any encryption or hashing library/mechanism (ESAPI, System.Security, etc.)?"
+  intent: "Identify encryption and hashing mechanisms to verify they use appropriate cryptographic standards."
+
+- id: WEB-SEC-027
+  question: "Does the application have hardcoded passwords or keys in the code or configuration (web.config, config.properties, etc.)?"
+  intent: "Verify that credentials and secrets are not embedded in source code or configuration files."
+
+- id: WEB-SEC-028
+  question: "Are the requests carried out in secure protocols (HTTPS, LDAPS, Kerberos, others)?"
+  intent: "Ensure that all communications are encrypted and authenticated to prevent interception and tampering."
+
+- id: WEB-SEC-029
+  question: "Does your application process XML or has any SOAP communication?"
+  intent: "Identify XML/SOAP processing to assess risks of XXE, XML injection, and other XML-based attacks."
+
+- id: WEB-SEC-030
+  question: "How does the application deal with error/exception messages (Unhandled exceptions, what is shown in the front end, full stack trace, etc.)?"
+  intent: "Verify that error handling does not expose sensitive information or system details to potential attackers."
+
+- id: WEB-SEC-031
+  question: "Do you have inputs where regular expressions are used?"
+  intent: "Identify regex usage to assess potential ReDoS (Regular Expression Denial of Service) vulnerabilities."
+
+- id: WEB-SEC-032
+  question: "Do you usually check the boundaries of the values in your loops?"
+  intent: "Verify boundary checking to prevent buffer overflows and integer overflow vulnerabilities."
+
+- id: WEB-SEC-033
+  question: "Does the application use sleep functions?"
+  intent: "Identify sleep function usage to assess potential timing-based denial of service vulnerabilities."

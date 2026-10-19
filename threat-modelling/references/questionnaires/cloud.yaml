@@ -1,0 +1,20 @@
+# Cloud Application Security Threat Modelling Questionnaire
+- id: CLOUD-SEC-001
+  question: “Please describe controls used to protect confidential, sensitive and PII data stored in the cloud.”
+  intent: “Understand data protection mechanisms to reduce the risk of data breaches of sensitive, protected or confidential information being released, viewed, stolen or used by unauthorized individuals.”
+
+- id: CLOUD-SEC-002
+  question: “Please describe misconfiguration and change controls you have in place to reduce gaps in your cloud environment.”
+  intent: “Assess how misconfiguration risks are mitigated due to cloud complexity and human errors (99% of cloud failures occur due to misconfiguration), and ensure change controls are properly managed in cloud environments.”
+
+- id: CLOUD-SEC-003
+  question: “Do you have an architectural diagram and description of the security controls implemented in your cloud application?”
+  intent: “Verify that appropriate security architecture is designed and documented to withstand cyberattacks during cloud migration and deployment.”
+
+- id: CLOUD-SEC-004
+  question: “Do you have an Identity and Access Management (IAM) management system in place that protects credentials, rotates cryptographic keys, enforces strong passwords and 2FA?”
+  intent: “Assess identity, credential, and access management systems to ensure proper lifecycle management and secure access to cloud resources.”
+
+- id: CLOUD-SEC-005
+  question: “How are API Keys protected? Please list any Open API Cloud Computing frameworks being used (e.g., Open Cloud Computing Interface (OCCI), Cloud Infrastructure Management Interface (CIMI)).”
+  intent: “Evaluate API security since APIs are the most exposed part of the system and require security by design with adequate controls protecting them from continuous attacks.”

@@ -1,0 +1,63 @@
+{
+  "_purpose": "Data-driven registry of insecure-configuration-toggle patterns for scripts/scan_repo_surface.py (the same generic engine used for entrypoint-patterns.json -- 'kind' here is just a different label, no engine code changes needed). These are code-level security controls that can be disabled via a flag or environment variable, and where the disabled state is a single, unambiguous, well-known risk regardless of surrounding context -- unlike authorization/business-logic gaps, which need judgment and belong in analyze_workflows.py/the Business Logic & Abuse Case Agent instead.",
+  "_extend_instructions": "Add a new entry here for any other 'well-known insecure toggle' (a specific flag/env-var name whose disabled/true/false state is unambiguously risky on its own, independent of what the surrounding code does) -- never add bespoke per-language detection code to scan_repo_surface.py. Good candidates: other TLS-verification bypasses, other signature-verification bypasses, other CORS-wildcard/credential-exposure flags, debug-mode-in-production flags. Each pattern's anchor_regex should encode the RISKY VALUE directly (e.g. '...:\\s*true') so a match is inherently the risk, not just the presence of a configurable field.",
+  "kinds": ["insecure_config_toggle"],
+  "patterns": [
+    {
+      "id": "tls-insecure-skip-verify-go",
+      "kind": "insecure_config_toggle",
+      "language": "Go",
+      "anchor_regex": "InsecureSkipVerify:\\s*(?:true|\\w+)",
+      "window_lines": 3,
+      "fields": {"description": {"regex": ".*"}}
+    },
+    {
+      "id": "tls-reject-unauthorized-false-js",
+      "kind": "insecure_config_toggle",
+      "language": "JavaScript",
+      "anchor_regex": "rejectUnauthorized\\s*:\\s*false|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*['\"]?0",
+      "window_lines": 3,
+      "fields": {}
+    },
+    {
+      "id": "tls-verify-false-python",
+      "kind": "insecure_config_toggle",
+      "language": "Python",
+      "anchor_regex": "verify\\s*=\\s*False\\b|ssl\\._create_unverified_context",
+      "window_lines": 3,
+      "fields": {}
+    },
+    {
+      "id": "tls-skip-verify-env-toggle-generic",
+      "kind": "insecure_config_toggle",
+      "language": null,
+      "anchor_regex": "[A-Z0-9_]*(?:TLS|SSL)[A-Z0-9_]*(?:SKIP|INSECURE|DISABLE)[A-Z0-9_]*(?:VERIFY)?[A-Z0-9_]*",
+      "window_lines": 2,
+      "fields": {"env_var_like": {"group": 0}}
+    },
+    {
+      "id": "jwt-signature-verification-toggle-generic",
+      "kind": "insecure_config_toggle",
+      "language": null,
+      "anchor_regex": "[A-Z0-9_]*JWT[A-Z0-9_]*VERIFY[A-Z0-9_]*\\s*=|JWT_VERIFY",
+      "window_lines": 3,
+      "fields": {}
+    },
+    {
+      "id": "cors-allow-all-origins",
+      "kind": "insecure_config_toggle",
+      "language": null,
+      "anchor_regex": "Access-Control-Allow-Origin[\"']?\\s*[:,]\\s*[\"']\\*|AllowOrigins:\\s*\\[?\\s*[\"']\\*|cors\\.AllowAll\\(",
+      "window_lines": 3,
+      "fields": {}
+    },
+    {
+      "id": "debug-mode-enabled-generic",
+      "kind": "insecure_config_toggle",
+      "language": null,
+      "anchor_regex": "DEBUG\\s*=\\s*(?:True|true|1)\\b|app\\.debug\\s*=\\s*True",
+      "window_lines": 2,
+      "fields": {}
+    }
+  ]
+}

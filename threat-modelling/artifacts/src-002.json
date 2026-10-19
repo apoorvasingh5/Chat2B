@@ -1,0 +1,68 @@
+{
+  "artifact": {
+    "id": "SRC-002",
+    "file_name": "test.html",
+    "type": "html",
+    "location": "C:\\Users\\SourishD\\AppData\\Local\\Temp\\claude\\C--Users-SourishD-OneDrive---Checkmarx-Laptop-Documents-AI-Challenge-TM-Agent\\1cd0a388-cbec-476d-a3d9-dbc2da85093a\\scratchpad\\test.html",
+    "hash": "2acd023c6378dfa3"
+  },
+  "title": "Test Confluence Export",
+  "sections": [
+    {
+      "heading": "Architecture Overview",
+      "level": 1,
+      "anchor": "architecture-overview",
+      "path": "Architecture Overview",
+      "text": "This system exposes an API Gateway."
+    },
+    {
+      "heading": "Components",
+      "level": 2,
+      "anchor": "components",
+      "path": "Architecture Overview > Components",
+      "text": "Name Type \n API Gateway Gateway"
+    }
+  ],
+  "diagrams_detected": true,
+  "images": [
+    {
+      "src": "diagram.png",
+      "alt": "Architecture diagram",
+      "title": ""
+    }
+  ],
+  "tables": [
+    {
+      "index": 0,
+      "header": [
+        "Name",
+        "Type"
+      ],
+      "rows": [
+        [
+          "API Gateway",
+          "Gateway"
+        ]
+      ]
+    }
+  ],
+  "code_blocks": [
+    {
+      "content": "curl https://api.example.com"
+    }
+  ],
+  "links": [
+    {
+      "text": "Doc link",
+      "url": "https://example.com/doc"
+    }
+  ],
+  "parser": "bs4",
+  "stats": {
+    "section_count": 2,
+    "table_count": 1,
+    "image_count": 1,
+    "link_count": 1,
+    "code_block_count": 1
+  }
+}

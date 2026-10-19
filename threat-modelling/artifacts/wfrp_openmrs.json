@@ -1,0 +1,314 @@
+{
+  "workflow_risk_patterns": [
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-001",
+      "step_id": "S2",
+      "title": "'Supply DB connection and admin DB credentials' (BP-001/S2) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-005' reachable from ['C-003', 'C-001'], not only from 'C-005' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "Medium",
+      "evidence": [
+        "inbound to C-005: ['C-003', 'C-001']"
+      ],
+      "id": "WFRP-001"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-001",
+      "step_id": "S2",
+      "title": "'Supply DB connection and admin DB credentials' (BP-001/S2) trusts client-supplied field(s) ['database host', 'db username/password', 'admin user password'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "High",
+      "evidence": [
+        "client_supplied_fields: ['database host', 'db username/password', 'admin user password']"
+      ],
+      "id": "WFRP-002"
+    },
+    {
+      "pattern_key": "irreversible_step_without_preceding_confirmation",
+      "workflow_id": "BP-001",
+      "step_id": "S2",
+      "title": "'Supply DB connection and admin DB credentials' (BP-001/S2) is irreversible with no documented confirmation step before it",
+      "description": "A single request (sent in error, automated, or malicious) permanently changes state with no review/confirm gate and no compensating action available afterward.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-003"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-001",
+      "step_id": "S3",
+      "title": "'Run Liquibase schema/demo data and create admin user' (BP-001/S3) trusts client-supplied field(s) ['admin password', 'demo-data option'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "High",
+      "evidence": [
+        "client_supplied_fields: ['admin password', 'demo-data option']"
+      ],
+      "id": "WFRP-004"
+    },
+    {
+      "pattern_key": "irreversible_step_without_preceding_confirmation",
+      "workflow_id": "BP-001",
+      "step_id": "S3",
+      "title": "'Run Liquibase schema/demo data and create admin user' (BP-001/S3) is irreversible with no documented confirmation step before it",
+      "description": "A single request (sent in error, automated, or malicious) permanently changes state with no review/confirm gate and no compensating action available afterward.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-005"
+    },
+    {
+      "pattern_key": "invariant_without_enforcement_point",
+      "workflow_id": "BP-001",
+      "step_id": null,
+      "title": "Invariant INV-001 has no identified enforcement point in BP-001",
+      "description": "'The setup wizard must be unreachable once the system is initialized.' is declared as a business rule for this workflow, but no step was identified as the place that actually checks/enforces it server-side. An unenforced invariant is a documented intention, not a control.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-006"
+    },
+    {
+      "pattern_key": "workflow_missing_compensation_step",
+      "workflow_id": "BP-001",
+      "step_id": null,
+      "title": "BP-001 ('First-Run Installation Wizard') has multiple state-changing steps with no documented compensation/rollback step",
+      "description": "If the workflow fails partway through (e.g. inventory reserved but payment fails), is there a documented compensating action, or can the system be left in an inconsistent state an attacker can trigger deliberately (e.g. repeatedly starting and abandoning checkout to hold inventory)?",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-007"
+    },
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-002",
+      "step_id": "S2",
+      "title": "'Review pending changesets' (BP-002/S2) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-005' reachable from ['C-003', 'C-001'], not only from 'C-005' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "Medium",
+      "evidence": [
+        "inbound to C-005: ['C-003', 'C-001']"
+      ],
+      "id": "WFRP-008"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-002",
+      "step_id": "S3",
+      "title": "'Execute updates' (BP-002/S3) trusts client-supplied field(s) ['confirmation'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "High",
+      "evidence": [
+        "client_supplied_fields: ['confirmation']"
+      ],
+      "id": "WFRP-009"
+    },
+    {
+      "pattern_key": "invariant_without_enforcement_point",
+      "workflow_id": "BP-002",
+      "step_id": null,
+      "title": "Invariant INV-002 has no identified enforcement point in BP-002",
+      "description": "'Only an authenticated super user may trigger DB updates; S3 must re-verify the session from S1.' is declared as a business rule for this workflow, but no step was identified as the place that actually checks/enforces it server-side. An unenforced invariant is a documented intention, not a control.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-010"
+    },
+    {
+      "pattern_key": "missing_rate_limit_on_repeatable_sensitive_step",
+      "workflow_id": "BP-003",
+      "step_id": "S1",
+      "title": "'Create encounter/visit' (BP-003/S1) has no documented rate limit on a sensitive, repeatable, state-changing action",
+      "description": "Legitimate-looking repeated calls to this step (coupon redemption, inventory decrement, credit/balance changes) can be abused at scale -- inventory oversell, coupon-stacking, credential stuffing against a business process rather than a login form -- without tripping any generic WAF/SAST rule, since each individual call is syntactically valid.",
+      "severity": "High",
+      "evidence": [],
+      "id": "WFRP-011"
+    },
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-003",
+      "step_id": "S2",
+      "title": "'Save order (new/revise/discontinue)' (BP-003/S2) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-006' reachable from ['C-004', 'C-012', 'C-013', 'C-014'], not only from 'C-006' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "High",
+      "evidence": [
+        "inbound to C-006: ['C-004', 'C-012', 'C-013', 'C-014']"
+      ],
+      "id": "WFRP-012"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-003",
+      "step_id": "S2",
+      "title": "'Save order (new/revise/discontinue)' (BP-003/S2) trusts client-supplied field(s) ['patient', 'concept', 'dosing', 'orderer', 'dates'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "Critical",
+      "evidence": [
+        "client_supplied_fields: ['patient', 'concept', 'dosing', 'orderer', 'dates']"
+      ],
+      "id": "WFRP-013"
+    },
+    {
+      "pattern_key": "missing_rate_limit_on_repeatable_sensitive_step",
+      "workflow_id": "BP-003",
+      "step_id": "S2",
+      "title": "'Save order (new/revise/discontinue)' (BP-003/S2) has no documented rate limit on a sensitive, repeatable, state-changing action",
+      "description": "Legitimate-looking repeated calls to this step (coupon redemption, inventory decrement, credit/balance changes) can be abused at scale -- inventory oversell, coupon-stacking, credential stuffing against a business process rather than a login form -- without tripping any generic WAF/SAST rule, since each individual call is syntactically valid.",
+      "severity": "High",
+      "evidence": [],
+      "id": "WFRP-014"
+    },
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-003",
+      "step_id": "S3",
+      "title": "'Fulfil / discontinue order' (BP-003/S3) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-006' reachable from ['C-004', 'C-012', 'C-013', 'C-014'], not only from 'C-006' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "High",
+      "evidence": [
+        "inbound to C-006: ['C-004', 'C-012', 'C-013', 'C-014']"
+      ],
+      "id": "WFRP-015"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-003",
+      "step_id": "S3",
+      "title": "'Fulfil / discontinue order' (BP-003/S3) trusts client-supplied field(s) ['order id', 'fulfiller status'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "Critical",
+      "evidence": [
+        "client_supplied_fields: ['order id', 'fulfiller status']"
+      ],
+      "id": "WFRP-016"
+    },
+    {
+      "pattern_key": "missing_rate_limit_on_repeatable_sensitive_step",
+      "workflow_id": "BP-003",
+      "step_id": "S3",
+      "title": "'Fulfil / discontinue order' (BP-003/S3) has no documented rate limit on a sensitive, repeatable, state-changing action",
+      "description": "Legitimate-looking repeated calls to this step (coupon redemption, inventory decrement, credit/balance changes) can be abused at scale -- inventory oversell, coupon-stacking, credential stuffing against a business process rather than a login form -- without tripping any generic WAF/SAST rule, since each individual call is syntactically valid.",
+      "severity": "High",
+      "evidence": [],
+      "id": "WFRP-017"
+    },
+    {
+      "pattern_key": "step_relies_on_client_declared_completion_flag",
+      "workflow_id": "BP-003",
+      "step_id": "S3",
+      "title": "'Fulfil / discontinue order' (BP-003/S3) trusts a client-supplied status/completion field ['fulfiller status']",
+      "description": "If the server derives workflow progress (e.g. 'payment confirmed', 'step completed') from a field the client sets rather than from its own authoritative state (payment provider webhook, database record), a client can skip or fake completion of a prior step entirely.",
+      "severity": "Critical",
+      "evidence": [
+        "client_supplied_fields matching completion-flag keywords: ['fulfiller status']"
+      ],
+      "id": "WFRP-018"
+    },
+    {
+      "pattern_key": "invariant_without_enforcement_point",
+      "workflow_id": "BP-003",
+      "step_id": null,
+      "title": "Invariant INV-003 has no identified enforcement point in BP-003",
+      "description": "'A user may act only on patients/locations they are permitted to access; ownership must be re-checked at every step.' is declared as a business rule for this workflow, but no step was identified as the place that actually checks/enforces it server-side. An unenforced invariant is a documented intention, not a control.",
+      "severity": "High",
+      "evidence": [],
+      "id": "WFRP-019"
+    },
+    {
+      "pattern_key": "invariant_without_enforcement_point",
+      "workflow_id": "BP-003",
+      "step_id": null,
+      "title": "Invariant INV-004 has no identified enforcement point in BP-003",
+      "description": "'A discontinued or voided order cannot be revised or fulfilled.' is declared as a business rule for this workflow, but no step was identified as the place that actually checks/enforces it server-side. An unenforced invariant is a documented intention, not a control.",
+      "severity": "High",
+      "evidence": [],
+      "id": "WFRP-020"
+    },
+    {
+      "pattern_key": "workflow_missing_compensation_step",
+      "workflow_id": "BP-003",
+      "step_id": null,
+      "title": "BP-003 ('Clinical Order Lifecycle') has multiple state-changing steps with no documented compensation/rollback step",
+      "description": "If the workflow fails partway through (e.g. inventory reserved but payment fails), is there a documented compensating action, or can the system be left in an inconsistent state an attacker can trigger deliberately (e.g. repeatedly starting and abandoning checkout to hold inventory)?",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-021"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-004",
+      "step_id": "S1",
+      "title": "'Queue inbound HL7 message' (BP-004/S1) trusts client-supplied field(s) ['HL7 message body'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "High",
+      "evidence": [
+        "client_supplied_fields: ['HL7 message body']"
+      ],
+      "id": "WFRP-022"
+    },
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-004",
+      "step_id": "S2",
+      "title": "'Parse and process into patient records' (BP-004/S2) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-013' reachable from ['C-001'], not only from 'C-013' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "Medium",
+      "evidence": [
+        "inbound to C-013: ['C-001']"
+      ],
+      "id": "WFRP-023"
+    },
+    {
+      "pattern_key": "client_supplied_field_without_authorization_recheck",
+      "workflow_id": "BP-004",
+      "step_id": "S2",
+      "title": "'Parse and process into patient records' (BP-004/S2) trusts client-supplied field(s) ['patient match keys', 'observation values'] without a documented authorization/ownership re-check",
+      "description": "Server-trusted client input for business-critical fields (price, quantity, discount, ownership identifiers, workflow-instance IDs) at a step with no independent authorization check is a classic parameter-tampering and workflow-ownership-confusion pattern that SAST/DAST rules for generic injection or missing-auth will not catch, because the field and the request are syntactically valid.",
+      "severity": "High",
+      "evidence": [
+        "client_supplied_fields: ['patient match keys', 'observation values']"
+      ],
+      "id": "WFRP-024"
+    },
+    {
+      "pattern_key": "irreversible_step_without_preceding_confirmation",
+      "workflow_id": "BP-004",
+      "step_id": "S2",
+      "title": "'Parse and process into patient records' (BP-004/S2) is irreversible with no documented confirmation step before it",
+      "description": "A single request (sent in error, automated, or malicious) permanently changes state with no review/confirm gate and no compensating action available afterward.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-025"
+    },
+    {
+      "pattern_key": "workflow_step_reachable_out_of_order",
+      "workflow_id": "BP-004",
+      "step_id": "S3",
+      "title": "'Archive or move to error queue' (BP-004/S3) may be reachable without completing the prior step",
+      "description": "The graph shows component 'C-013' reachable from ['C-001'], not only from 'C-013' (the documented previous step). Verify the service enforces that this step cannot run before its prerequisite step, rather than relying on clients to call endpoints in the intended order.",
+      "severity": "Medium",
+      "evidence": [
+        "inbound to C-013: ['C-001']"
+      ],
+      "id": "WFRP-026"
+    },
+    {
+      "pattern_key": "invariant_without_enforcement_point",
+      "workflow_id": "BP-004",
+      "step_id": null,
+      "title": "Invariant INV-005 has no identified enforcement point in BP-004",
+      "description": "'Each HL7 message is processed exactly once and attributed to the correct patient.' is declared as a business rule for this workflow, but no step was identified as the place that actually checks/enforces it server-side. An unenforced invariant is a documented intention, not a control.",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-027"
+    },
+    {
+      "pattern_key": "workflow_missing_compensation_step",
+      "workflow_id": "BP-004",
+      "step_id": null,
+      "title": "BP-004 ('HL7 Message Intake and Processing') has multiple state-changing steps with no documented compensation/rollback step",
+      "description": "If the workflow fails partway through (e.g. inventory reserved but payment fails), is there a documented compensating action, or can the system be left in an inconsistent state an attacker can trigger deliberately (e.g. repeatedly starting and abandoning checkout to hold inventory)?",
+      "severity": "Medium",
+      "evidence": [],
+      "id": "WFRP-028"
+    }
+  ],
+  "workflows_analyzed": 4,
+  "note": ""
+}

@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-10-16T12:38:32Z",
+  "repo_root": "C:\\Users\\AnjaliD\\Documents\\Test projects\\openmrs-core",
+  "files_scanned": 11,
+  "note": "Plain line-pattern scan of Dockerfiles/compose/Kubernetes manifests, not a validating parser -- treat findings as candidates (Low/Medium confidence) to confirm, not confirmed facts. pattern_key values overlap build_graph.py's risk_patterns vocabulary where the concept matches.",
+  "findings": [
+    {
+      "pattern_key": "container_port_exposed",
+      "title": "Dockerfile:86 exposes port(s) 8080",
+      "description": "Documented for cross-reference against the architecture model's internet_exposed fields -- an EXPOSEd port is not necessarily internet-facing, that depends on orchestration/network config.",
+      "severity": "Informational",
+      "evidence": [
+        "REPO:Dockerfile:86"
+      ],
+      "id": "REPOINFRA-001"
+    },
+    {
+      "pattern_key": "container_port_exposed",
+      "title": "Dockerfile:132 exposes port(s) 8080",
+      "description": "Documented for cross-reference against the architecture model's internet_exposed fields -- an EXPOSEd port is not necessarily internet-facing, that depends on orchestration/network config.",
+      "severity": "Informational",
+      "evidence": [
+        "REPO:Dockerfile:132"
+      ],
+      "id": "REPOINFRA-002"
+    }
+  ]
+}

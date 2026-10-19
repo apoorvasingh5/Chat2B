@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-10-16T12:41:45Z",
+  "csv_source": "C:\\Users\\AnjaliD\\.claude\\skills\\threat-modelling\\references\\cx-presets-queries\\9.7.0_All_queries_by_preset_list.csv",
+  "requested_cwes": [
+    "352"
+  ],
+  "coverage_threshold": 60.0,
+  "results": [
+    {
+      "language": "Java",
+      "mode": "preset",
+      "recommended_preset": "All",
+      "coverage_pct": 100.0,
+      "covered_cwes": [
+        "352"
+      ],
+      "gap_cwes": [],
+      "supplemental_queries_for_gaps": [],
+      "supplemental_queries_truncated_count": 0,
+      "top_alternative_presets": [
+        {
+          "preset": "OWASP TOP 10 - 2021",
+          "coverage_pct": 100.0,
+          "covered_cwes": [
+            "352"
+          ],
+          "query_count": 215
+        },
+        {
+          "preset": "High and Medium and Low",
+          "coverage_pct": 100.0,
+          "covered_cwes": [
+            "352"
+          ],
+          "query_count": 207
+        },
+        {
+          "preset": "Checkmarx Default",
+          "coverage_pct": 100.0,
+          "covered_cwes": [
+            "352"
+          ],
+          "query_count": 183
+        }
+      ]
+    }
+  ],
+  "note": "CWE '0' rows (queries with no assigned CWE) are never matched; they represent code-quality/best-practice rules rather than CWE-specific vulnerability checks."
+}

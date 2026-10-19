@@ -1,0 +1,511 @@
+{
+  "_purpose": "Data-driven registry of 'entry point' detection rules for scripts/scan_repo_surface.py. An entry point is anything an external caller invokes: an HTTP route, an MCP tool, a gRPC method, a message-queue consumer, a CLI command, a scheduled job, a serverless handler. The engine (scan_repo_surface.py) is fully generic -- it has zero framework-specific code. Every framework/protocol it recognizes is a row in this file.",
+  "_extend_instructions": "To support a new framework or protocol (gRPC today, Kafka tomorrow, whatever comes after that): add a new object to 'patterns' below following the existing shape. Never add framework-specific regex or branching logic to scan_repo_surface.py itself -- if you find yourself about to write 'if repo uses X, look for Y' in Python, that 'if/look for' belongs here as data instead. A pattern needs: a stable 'id', a 'kind' (reuse an existing kind where the concept matches -- see 'kinds' below -- or introduce a new one), an 'anchor_regex' that finds the entry point's declaration line, optional 'language' (null = language-agnostic, applied across all scanned text files), optional 'dependency_hints' (lowercase substrings matched against scan_repo_manifest.py's detected dependency names -- used to skip irrelevant patterns for precision when a manifest scan is supplied; omit to always apply), 'window_lines' (how many lines after the anchor to search for 'fields'), and 'fields' (named sub-extractions: 'group' takes a capture group from the anchor match itself, 'regex' searches the window for a separate pattern).",
+  "kinds": [
+    "http_route",
+    "rpc_tool",
+    "rpc_method",
+    "graphql_resolver",
+    "message_consumer",
+    "cli_command",
+    "scheduled_job",
+    "serverless_handler"
+  ],
+  "sensitive_action_keywords": [
+    "delete",
+    "remove",
+    "admin",
+    "approve",
+    "escalate",
+    "grant",
+    "revoke",
+    "write",
+    "update",
+    "change",
+    "trigger",
+    "execute",
+    "run",
+    "pay",
+    "payment",
+    "transfer",
+    "refund",
+    "remediat",
+    "risk",
+    "severity",
+    "override",
+    "bypass",
+    "disable",
+    "shutdown",
+    "destroy",
+    "purge"
+  ],
+  "patterns": [
+    {
+      "id": "rest-flask-decorator",
+      "kind": "http_route",
+      "language": "Python",
+      "dependency_hints": [
+        "flask"
+      ],
+      "anchor_regex": "@(?:app|blueprint|bp)\\.(get|post|put|patch|delete)\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-flask-route-decorator",
+      "kind": "http_route",
+      "language": "Python",
+      "dependency_hints": [
+        "flask"
+      ],
+      "anchor_regex": "@app\\.route\\(\\s*[\"']([^\"']+)[\"'](?:.*methods\\s*=\\s*\\[([^\\]]*)\\])?",
+      "window_lines": 15,
+      "fields": {
+        "path": {
+          "group": 1
+        },
+        "method": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-fastapi-decorator",
+      "kind": "http_route",
+      "language": "Python",
+      "dependency_hints": [
+        "fastapi"
+      ],
+      "anchor_regex": "@(?:app|router)\\.(get|post|put|patch|delete)\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-django-urlpattern",
+      "kind": "http_route",
+      "language": "Python",
+      "dependency_hints": [
+        "django"
+      ],
+      "anchor_regex": "path\\(\\s*[\"']([^\"']*)[\"']\\s*,\\s*(\\w+)",
+      "window_lines": 5,
+      "fields": {
+        "path": {
+          "group": 1
+        },
+        "view": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-express-route",
+      "kind": "http_route",
+      "language": "JavaScript",
+      "dependency_hints": [
+        "express"
+      ],
+      "anchor_regex": "(?:app|router)\\.(get|post|put|patch|delete)\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-spring-mapping",
+      "kind": "http_route",
+      "language": "Java",
+      "dependency_hints": [
+        "spring"
+      ],
+      "anchor_regex": "@(Get|Post|Put|Patch|Delete)Mapping\\(\\s*[\"']?([^\"')]*)[\"']?\\)",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-aspnet-attribute",
+      "kind": "http_route",
+      "language": "CSharp",
+      "dependency_hints": [
+        "aspnetcore",
+        "aspnet"
+      ],
+      "anchor_regex": "\\[Http(Get|Post|Put|Patch|Delete)\\]",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        }
+      }
+    },
+    {
+      "id": "rest-go-http-verb",
+      "kind": "http_route",
+      "language": "Go",
+      "dependency_hints": [
+        "gin-gonic",
+        "labstack/echo",
+        "gofiber",
+        "go-chi"
+      ],
+      "anchor_regex": "\\.(GET|POST|PUT|PATCH|DELETE)\\(\\s*\"([^\"]+)\"",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-rails-route",
+      "kind": "http_route",
+      "language": "Ruby",
+      "dependency_hints": [
+        "rails",
+        "sinatra"
+      ],
+      "anchor_regex": "\\b(get|post|put|patch|delete)\\s+[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "rest-php-route",
+      "kind": "http_route",
+      "language": "PHP",
+      "dependency_hints": [
+        "laravel",
+        "slim"
+      ],
+      "anchor_regex": "\\$(?:app|router)->(get|post|put|patch|delete)\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "method": {
+          "group": 1,
+          "upper": true
+        },
+        "path": {
+          "group": 2
+        }
+      }
+    },
+    {
+      "id": "mcp-tool-go-sdk",
+      "kind": "rpc_tool",
+      "language": "Go",
+      "dependency_hints": [
+        "modelcontextprotocol/go-sdk",
+        "mark3labs/mcp-go"
+      ],
+      "anchor_regex": "\\.AddTool\\(",
+      "window_lines": 12,
+      "fields": {
+        "title": {
+          "regex": "Title:\\s*\"([^\"]+)\""
+        },
+        "name_ref": {
+          "regex": "Name:\\s*([A-Za-z0-9_.]+)"
+        }
+      }
+    },
+    {
+      "id": "mcp-tool-python-sdk-decorator",
+      "kind": "rpc_tool",
+      "language": "Python",
+      "dependency_hints": [
+        "mcp",
+        "fastmcp"
+      ],
+      "anchor_regex": "@\\w*\\.?tool\\s*\\(",
+      "window_lines": 10,
+      "fields": {
+        "name_ref": {
+          "regex": "^\\s*(?:async\\s+)?def\\s+(\\w+)\\s*\\(",
+          "multiline": true
+        }
+      }
+    },
+    {
+      "id": "mcp-tool-typescript-sdk",
+      "kind": "rpc_tool",
+      "language": "JavaScript",
+      "dependency_hints": [
+        "@modelcontextprotocol/sdk"
+      ],
+      "anchor_regex": "\\.tool\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 8,
+      "fields": {
+        "name_ref": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "grpc-go-service-method",
+      "kind": "rpc_method",
+      "language": "Go",
+      "dependency_hints": [
+        "google.golang.org/grpc"
+      ],
+      "anchor_regex": "func\\s+\\(\\w+\\s+\\*\\w+Server\\)\\s+(\\w+)\\(",
+      "window_lines": 10,
+      "fields": {
+        "method_name": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "grpc-python-servicer-method",
+      "kind": "rpc_method",
+      "language": "Python",
+      "dependency_hints": [
+        "grpcio",
+        "grpc"
+      ],
+      "anchor_regex": "class\\s+\\w+Servicer[^:]*:",
+      "window_lines": 1,
+      "fields": {}
+    },
+    {
+      "id": "grpc-java-service-method",
+      "kind": "rpc_method",
+      "language": "Java",
+      "dependency_hints": [
+        "grpc"
+      ],
+      "anchor_regex": "public\\s+void\\s+(\\w+)\\(\\w+Request",
+      "window_lines": 5,
+      "fields": {
+        "method_name": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "graphql-resolver-generic",
+      "kind": "graphql_resolver",
+      "language": null,
+      "dependency_hints": [
+        "graphql",
+        "apollo-server",
+        "graphene"
+      ],
+      "anchor_regex": "(?:Query|Mutation)\\s*:\\s*\\{|@(?:query|mutation)\\b|resolve[A-Z]\\w*\\s*\\(",
+      "window_lines": 8,
+      "fields": {}
+    },
+    {
+      "id": "message-consumer-generic",
+      "kind": "message_consumer",
+      "language": null,
+      "dependency_hints": [
+        "kafka",
+        "sarama",
+        "confluent-kafka",
+        "kafkajs",
+        "rabbitmq",
+        "amqp",
+        "sqs"
+      ],
+      "anchor_regex": "(?:Subscribe|Consume|OnMessage|HandleMessage|handleMessage|on_message)\\s*\\(",
+      "window_lines": 10,
+      "fields": {}
+    },
+    {
+      "id": "cli-cobra-command",
+      "kind": "cli_command",
+      "language": "Go",
+      "dependency_hints": [
+        "spf13/cobra"
+      ],
+      "anchor_regex": "&cobra\\.Command\\{",
+      "window_lines": 10,
+      "fields": {
+        "name": {
+          "regex": "Use:\\s*\"([^\"\\s]+)"
+        }
+      }
+    },
+    {
+      "id": "cli-click-command",
+      "kind": "cli_command",
+      "language": "Python",
+      "dependency_hints": [
+        "click"
+      ],
+      "anchor_regex": "@click\\.command\\(",
+      "window_lines": 8,
+      "fields": {
+        "name_ref": {
+          "regex": "^\\s*def\\s+(\\w+)\\s*\\(",
+          "multiline": true
+        }
+      }
+    },
+    {
+      "id": "cli-commander-command",
+      "kind": "cli_command",
+      "language": "JavaScript",
+      "dependency_hints": [
+        "commander"
+      ],
+      "anchor_regex": "\\.command\\(\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 5,
+      "fields": {
+        "name": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "scheduled-job-cron-keyword",
+      "kind": "scheduled_job",
+      "language": null,
+      "dependency_hints": [
+        "cron",
+        "node-cron",
+        "apscheduler",
+        "robfig/cron"
+      ],
+      "anchor_regex": "\\b(?:cron\\.New|schedule\\.every|@scheduled|CronJob)\\b",
+      "window_lines": 5,
+      "fields": {}
+    },
+    {
+      "id": "serverless-handler-generic",
+      "kind": "serverless_handler",
+      "language": null,
+      "dependency_hints": [
+        "aws-lambda",
+        "aws-lambda-go",
+        "azure-functions",
+        "functions-framework"
+      ],
+      "anchor_regex": "func\\s+Handler\\s*\\(|exports\\.handler\\s*=|def\\s+lambda_handler\\s*\\(|def\\s+handler\\s*\\(",
+      "window_lines": 5,
+      "fields": {}
+    },
+    {
+      "id": "rest-spring-requestmapping",
+      "kind": "http_route",
+      "language": "Java",
+      "dependency_hints": [
+        "spring"
+      ],
+      "anchor_regex": "@RequestMapping\\(\\s*(?:value\\s*=\\s*|path\\s*=\\s*)?\\{?\\s*[\"']([^\"']+)[\"']",
+      "window_lines": 15,
+      "fields": {
+        "path": {
+          "group": 1
+        },
+        "method": {
+          "regex": "RequestMethod\\.(GET|POST|PUT|PATCH|DELETE)",
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "java-servlet-class",
+      "kind": "http_route",
+      "language": "Java",
+      "dependency_hints": [
+        "servlet"
+      ],
+      "anchor_regex": "class\\s+(\\w+)\\s+extends\\s+(?:HttpServlet|\\w*Servlet)\b",
+      "window_lines": 15,
+      "fields": {
+        "servlet": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "java-authorized-service-method",
+      "kind": "rpc_method",
+      "language": "Java",
+      "dependency_hints": [
+        "spring"
+      ],
+      "anchor_regex": "@Authorized\\(\\s*\\{?\\s*([^)}]*)",
+      "window_lines": 6,
+      "fields": {
+        "required_privileges": {
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "spring-controller-class",
+      "kind": "http_route",
+      "language": "Java",
+      "dependency_hints": [
+        "spring"
+      ],
+      "anchor_regex": "@(?:Rest)?Controller\\b",
+      "window_lines": 12,
+      "fields": {
+        "class": {
+          "regex": "class\\s+(\\w+)",
+          "group": 1
+        }
+      }
+    },
+    {
+      "id": "servlet-filter-or-listener",
+      "kind": "http_route",
+      "language": "Java",
+      "dependency_hints": [
+        "servlet"
+      ],
+      "anchor_regex": "class\\s+(\\w+)\\s+(?:extends\\s+\\w*Filter\\w*|implements\\s+[\\w,\\s]*\\bFilter\\b)",
+      "window_lines": 10,
+      "fields": {
+        "filter": {
+          "group": 1
+        }
+      }
+    }
+  ]
+}

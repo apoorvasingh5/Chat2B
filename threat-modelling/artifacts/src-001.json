@@ -1,0 +1,211 @@
+{
+  "artifact": {
+    "id": "SRC-001",
+    "file_name": "sample-architecture.md",
+    "type": "markdown",
+    "location": "examples\\sample-architecture.md",
+    "hash": "ad788a548787988c"
+  },
+  "sections": [
+    {
+      "heading": "Mobile Banking Platform Architecture",
+      "level": 1,
+      "anchor": "mobile-banking-platform-architecture",
+      "path": "Mobile Banking Platform Architecture",
+      "line_start": 1,
+      "line_end": 49,
+      "text": ""
+    },
+    {
+      "heading": "Overview",
+      "level": 2,
+      "anchor": "overview",
+      "path": "Mobile Banking Platform Architecture > Overview",
+      "line_start": 3,
+      "line_end": 10,
+      "text": "The Mobile Banking Platform lets retail customers check balances and move\nmoney from the mobile app. The API Gateway is the single internet-facing\nentry point and fronts the Account API. A legacy background sync path still\nlets the mobile app write directly to the Account Database for offline\nsupport."
+    },
+    {
+      "heading": "Data Flow",
+      "level": 2,
+      "anchor": "data-flow",
+      "path": "Mobile Banking Platform Architecture > Data Flow",
+      "line_start": 11,
+      "line_end": 22,
+      "text": ""
+    },
+    {
+      "heading": "Components",
+      "level": 2,
+      "anchor": "components",
+      "path": "Mobile Banking Platform Architecture > Components",
+      "line_start": 23,
+      "line_end": 33,
+      "text": ""
+    },
+    {
+      "heading": "Third-Party Integrations",
+      "level": 2,
+      "anchor": "third-party-integrations",
+      "path": "Mobile Banking Platform Architecture > Third-Party Integrations",
+      "line_start": 34,
+      "line_end": 39,
+      "text": "The Notification Service is a third-party vendor used to send transaction\nalerts by SMS and email. The Account API calls its webhook with the\ncustomer's name, phone number, and last transaction amount."
+    },
+    {
+      "heading": "Known Gaps",
+      "level": 2,
+      "anchor": "known-gaps",
+      "path": "Mobile Banking Platform Architecture > Known Gaps",
+      "line_start": 40,
+      "line_end": 49,
+      "text": "- TODO: confirm whether the Account API enforces object-level authorization\n  on every account lookup, or relies solely on the API Gateway's OAuth2 token.\n- Assumption: the API Gateway terminates TLS and forwards over HTTPS internally.\n- Assumption: Admin Portal network exposure is not yet documented; it may be\n  reachable from the general corporate network rather than a restricted\n  admin VLAN.\n- TBD: the legacy mobile-to-database offline sync path predates the API\n  Gateway and has not been reviewed for authentication or authorization."
+    }
+  ],
+  "diagrams_detected": true,
+  "diagrams": [
+    {
+      "type": "mermaid",
+      "diagram_type": "flowchart",
+      "section": "Mobile Banking Platform Architecture > Data Flow",
+      "line_start": 13,
+      "line_end": 21,
+      "raw": "graph TD\n  Mobile[Mobile App] -->|HTTPS OAuth2| Gateway(API Gateway)\n  Gateway -->|HTTPS| AccountAPI[Account API]\n  AccountAPI -->|SQL| DB[(Account Database)]\n  Mobile -.->|legacy offline sync| DB\n  AccountAPI -->|HTTPS webhook| Notify[Notification Service]\n  Admin[Admin Portal] -->|HTTPS| DB",
+      "nodes": [
+        {
+          "id": "Mobile",
+          "label": "Mobile App"
+        },
+        {
+          "id": "Gateway",
+          "label": "API Gateway"
+        },
+        {
+          "id": "AccountAPI",
+          "label": "Account API"
+        },
+        {
+          "id": "DB",
+          "label": "Account Database"
+        },
+        {
+          "id": "Notify",
+          "label": "Notification Service"
+        },
+        {
+          "id": "Admin",
+          "label": "Admin Portal"
+        }
+      ],
+      "edges": [
+        {
+          "from": "Mobile",
+          "to": "Gateway",
+          "label": "HTTPS OAuth2",
+          "arrow": "-->"
+        },
+        {
+          "from": "Gateway",
+          "to": "AccountAPI",
+          "label": "HTTPS",
+          "arrow": "-->"
+        },
+        {
+          "from": "AccountAPI",
+          "to": "DB",
+          "label": "SQL",
+          "arrow": "-->"
+        },
+        {
+          "from": "Mobile",
+          "to": "DB",
+          "label": "legacy offline sync",
+          "arrow": "-.->"
+        },
+        {
+          "from": "AccountAPI",
+          "to": "Notify",
+          "label": "HTTPS webhook",
+          "arrow": "-->"
+        },
+        {
+          "from": "Admin",
+          "to": "DB",
+          "label": "HTTPS",
+          "arrow": "-->"
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "section": "Mobile Banking Platform Architecture > Components",
+      "line_start": 25,
+      "line_end": 32,
+      "header": [
+        "Component",
+        "Technology",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Mobile App",
+          "iOS / Android native",
+          "Public app store distribution"
+        ],
+        [
+          "API Gateway",
+          "Kong",
+          "Terminates TLS, internet-facing"
+        ],
+        [
+          "Account API",
+          "Java / Spring Boot",
+          "Internal service, not directly internet-facing"
+        ],
+        [
+          "Account Database",
+          "PostgreSQL",
+          "Stores balances and account PII"
+        ],
+        [
+          "Notification Service",
+          "Third-party SMS/email vendor",
+          "Receives transaction alerts"
+        ],
+        [
+          "Admin Portal",
+          "Internal React app",
+          "Used by support staff to look up accounts"
+        ]
+      ]
+    }
+  ],
+  "code_blocks": [],
+  "links": [],
+  "flagged_lines": [
+    {
+      "line": 42,
+      "text": "- TODO: confirm whether the Account API enforces object-level authorization"
+    },
+    {
+      "line": 44,
+      "text": "- Assumption: the API Gateway terminates TLS and forwards over HTTPS internally."
+    },
+    {
+      "line": 45,
+      "text": "- Assumption: Admin Portal network exposure is not yet documented; it may be"
+    },
+    {
+      "line": 48,
+      "text": "- TBD: the legacy mobile-to-database offline sync path predates the API"
+    }
+  ],
+  "stats": {
+    "line_count": 49,
+    "section_count": 6,
+    "diagram_count": 1,
+    "table_count": 1,
+    "code_block_count": 0
+  }
+}

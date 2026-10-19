@@ -1,0 +1,640 @@
+{
+  "generated_at": "2026-10-19T09:57:08Z",
+  "repo_root": "C:\\Users\\apoorvas\\Desktop\\Chat2B",
+  "note": "Deterministic manifest scan only -- no source code was read beyond manifest files listed above. Treat 'languages'/'frameworks_detected' as candidates for technology_profile, confidence Low until corroborated.",
+  "manifests_found": [
+    {
+      "file": "chat2db-client/package.json",
+      "language": "JavaScript",
+      "dependency_count": 51,
+      "dependencies": [
+        "@dnd-kit/modifiers",
+        "@types/event-source-polyfill",
+        "@types/lodash",
+        "@types/react",
+        "@types/react-dom",
+        "@types/uuid",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "@umijs/plugins",
+        "ahooks",
+        "ali-react-table",
+        "antd",
+        "concurrently",
+        "copy-to-clipboard",
+        "cross-env",
+        "echarts",
+        "echarts-for-react",
+        "electron",
+        "electron-builder",
+        "electron-debug",
+        "eslint",
+        "eslint-config-airbnb-base",
+        "eslint-config-prettier",
+        "eslint-import-resolver-webpack",
+        "eslint-plugin-babel",
+        "eslint-plugin-import",
+        "eslint-plugin-prettier",
+        "eslint-plugin-react",
+        "eslint-plugin-react-hooks",
+        "event-source-polyfill",
+        "highlight.js",
+        "is-electron",
+        "lodash",
+        "lucide-react",
+        "markdown-it-link-attributes",
+        "monaco-editor",
+        "monaco-editor-esm-webpack-plugin",
+        "monaco-editor-webpack-plugin",
+        "prettier",
+        "prettier-plugin-organize-imports",
+        "prettier-plugin-packagejson",
+        "react-monaco-editor",
+        "react-sortablejs",
+        "sql-formatter",
+        "styled-components",
+        "tailwindcss",
+        "typescript",
+        "umi",
+        "umi-request",
+        "uuid",
+        "zustand"
+      ],
+      "source_ref": "REPO:chat2db-client/package.json"
+    },
+    {
+      "file": "chat2db-server/pom.xml",
+      "language": "Java",
+      "dependency_count": 54,
+      "dependencies": [
+        "HikariCP",
+        "cache-api",
+        "chat2db-plugins",
+        "chat2db-server-admin-api",
+        "chat2db-server-common-api",
+        "chat2db-server-domain-api",
+        "chat2db-server-domain-core",
+        "chat2db-server-domain-repository",
+        "chat2db-server-domain-support",
+        "chat2db-server-parent",
+        "chat2db-server-start",
+        "chat2db-server-tools-base",
+        "chat2db-server-tools-common",
+        "chat2db-server-web-api",
+        "chat2db-spi",
+        "chatgpt-java",
+        "commons-beanutils",
+        "commons-collections4",
+        "commons-io",
+        "druid",
+        "easyexcel",
+        "ehcache",
+        "fastjson2",
+        "flatten-maven-plugin",
+        "flyway-core",
+        "flyway-mysql",
+        "forest-core",
+        "forest-spring",
+        "freemarker",
+        "guava",
+        "h2",
+        "hutool-all",
+        "hutool-jwt",
+        "itext-asian",
+        "itextpdf",
+        "java-jwt",
+        "logbook-spring-boot-starter",
+        "lombok",
+        "lombok-mapstruct-binding",
+        "mapstruct",
+        "mapstruct-processor",
+        "maven-compiler-plugin",
+        "maven-surefire-plugin",
+        "mybatis-plus",
+        "mybatis-plus-generator",
+        "pdfbox",
+        "poi-tl",
+        "sa-token-jwt",
+        "sa-token-spring-boot3-starter",
+        "service",
+        "slf4j-simple",
+        "spring-boot-starter-parent",
+        "spring-context-indexer",
+        "sql-formatter"
+      ],
+      "source_ref": "REPO:chat2db-server/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/pom.xml",
+      "language": "Java",
+      "dependency_count": 2,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-server-parent"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-domain/pom.xml",
+      "language": "Java",
+      "dependency_count": 2,
+      "dependencies": [
+        "chat2db-server-domain",
+        "chat2db-server-parent"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-domain/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-start/pom.xml",
+      "language": "Java",
+      "dependency_count": 22,
+      "dependencies": [
+        "chat2db-server-domain-core",
+        "chat2db-server-parent",
+        "chat2db-server-start",
+        "chat2db-server-web-api",
+        "flyway-core",
+        "flyway-mysql",
+        "forest-core",
+        "forest-spring",
+        "freemarker",
+        "h2",
+        "jcl-over-slf4j",
+        "log4j-api",
+        "log4j-over-slf4j",
+        "logback-classic",
+        "logbook-spring-boot-starter",
+        "maven-dependency-plugin",
+        "mybatis-plus-generator",
+        "non-exists",
+        "spring-boot-maven-plugin",
+        "spring-boot-starter-test",
+        "spring-boot-starter-thymeleaf",
+        "spring-boot-starter-web"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-start/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-test/pom.xml",
+      "language": "Java",
+      "dependency_count": 7,
+      "dependencies": [
+        "chat2db-server-parent",
+        "chat2db-server-start",
+        "chat2db-server-test",
+        "jsqlparser",
+        "mysql-connector-java",
+        "spring-boot-starter-test",
+        "sql-formatter"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-test/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-tools/pom.xml",
+      "language": "Java",
+      "dependency_count": 2,
+      "dependencies": [
+        "chat2db-server-parent",
+        "chat2db-server-tools"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-tools/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-web/pom.xml",
+      "language": "Java",
+      "dependency_count": 2,
+      "dependencies": [
+        "chat2db-server-parent",
+        "chat2db-server-web"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-web/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-web-start/pom.xml",
+      "language": "Java",
+      "dependency_count": 25,
+      "dependencies": [
+        "chat2db-server-admin-api",
+        "chat2db-server-domain-core",
+        "chat2db-server-parent",
+        "chat2db-server-web-api",
+        "chat2db-server-web-start",
+        "flyway-core",
+        "flyway-mysql",
+        "forest-core",
+        "forest-spring",
+        "freemarker",
+        "h2",
+        "jcl-over-slf4j",
+        "log4j-api",
+        "log4j-over-slf4j",
+        "logback-classic",
+        "logbook-spring-boot-starter",
+        "maven-dependency-plugin",
+        "mybatis-plus-generator",
+        "non-exists",
+        "sa-token-jwt",
+        "sa-token-spring-boot3-starter",
+        "spring-boot-maven-plugin",
+        "spring-boot-starter-test",
+        "spring-boot-starter-thymeleaf",
+        "spring-boot-starter-web"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-web-start/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-spi/pom.xml",
+      "language": "Java",
+      "dependency_count": 20,
+      "dependencies": [
+        "HikariCP",
+        "antlr4",
+        "bcprov-jdk18on",
+        "chat2db-server-parent",
+        "chat2db-server-tools-common",
+        "chat2db-spi",
+        "commons-beanutils",
+        "druid",
+        "h2",
+        "jsch",
+        "jsqlparser",
+        "jts-core",
+        "maven-source-plugin",
+        "mybatis-plus",
+        "mysql-connector-java",
+        "ob-sql-parser",
+        "okhttp",
+        "orai18n",
+        "spring-jdbc",
+        "tika-core"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-spi/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-web/chat2db-server-admin-api/pom.xml",
+      "language": "Java",
+      "dependency_count": 10,
+      "dependencies": [
+        "chat2db-server-admin-api",
+        "chat2db-server-common-api",
+        "chat2db-server-domain-api",
+        "chat2db-server-domain-core",
+        "chat2db-server-tools-common",
+        "chat2db-server-web",
+        "commons-io",
+        "easyexcel",
+        "forest-spring",
+        "spring-boot-starter-web"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-web/chat2db-server-admin-api/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-web/chat2db-server-common-api/pom.xml",
+      "language": "Java",
+      "dependency_count": 5,
+      "dependencies": [
+        "chat2db-server-common-api",
+        "chat2db-server-domain-api",
+        "chat2db-server-tools-common",
+        "chat2db-server-web",
+        "spring-boot-starter-web"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-web/chat2db-server-common-api/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-web/chat2db-server-web-api/pom.xml",
+      "language": "Java",
+      "dependency_count": 23,
+      "dependencies": [
+        "chat2db-server-common-api",
+        "chat2db-server-domain-api",
+        "chat2db-server-domain-core",
+        "chat2db-server-tools-common",
+        "chat2db-server-web",
+        "chat2db-server-web-api",
+        "chat2db-spi",
+        "chatgpt-java",
+        "commons-io",
+        "easyexcel",
+        "forest-core",
+        "forest-spring",
+        "itext-asian",
+        "itextpdf",
+        "java-jwt",
+        "pdfbox",
+        "poi-tl",
+        "service",
+        "spring-aspects",
+        "spring-boot-starter-web",
+        "spring-boot-starter-websocket",
+        "spring-context",
+        "sql-formatter"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-web/chat2db-server-web-api/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-tools/chat2db-server-tools-base/pom.xml",
+      "language": "Java",
+      "dependency_count": 4,
+      "dependencies": [
+        "chat2db-server-tools",
+        "chat2db-server-tools-base",
+        "hibernate-validator",
+        "lombok"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-tools/chat2db-server-tools-base/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-tools/chat2db-server-tools-common/pom.xml",
+      "language": "Java",
+      "dependency_count": 16,
+      "dependencies": [
+        "chat2db-server-tools",
+        "chat2db-server-tools-base",
+        "chat2db-server-tools-common",
+        "commons-collections4",
+        "commons-lang3",
+        "fastjson2",
+        "guava",
+        "hibernate-validator",
+        "hutool-all",
+        "logbook-spring-boot-starter",
+        "mapstruct",
+        "mapstruct-processor",
+        "mybatis-plus",
+        "slf4j-api",
+        "spring-boot-starter",
+        "spring-context-indexer"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-tools/chat2db-server-tools-common/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-domain/chat2db-server-domain-api/pom.xml",
+      "language": "Java",
+      "dependency_count": 6,
+      "dependencies": [
+        "chat2db-server-domain",
+        "chat2db-server-domain-api",
+        "chat2db-server-tools-base",
+        "chat2db-spi",
+        "hibernate-validator",
+        "lombok"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-domain/chat2db-server-domain-api/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-domain/chat2db-server-domain-core/pom.xml",
+      "language": "Java",
+      "dependency_count": 27,
+      "dependencies": [
+        "cache-api",
+        "chat2db-clickhouse",
+        "chat2db-db2",
+        "chat2db-dm",
+        "chat2db-h2",
+        "chat2db-hive",
+        "chat2db-kingbase",
+        "chat2db-mariadb",
+        "chat2db-mongodb",
+        "chat2db-mysql",
+        "chat2db-oceanbase",
+        "chat2db-oracle",
+        "chat2db-postgresql",
+        "chat2db-presto",
+        "chat2db-server-domain",
+        "chat2db-server-domain-api",
+        "chat2db-server-domain-core",
+        "chat2db-server-domain-repository",
+        "chat2db-server-tools-common",
+        "chat2db-spi",
+        "chat2db-sqlite",
+        "chat2db-sqlserver",
+        "chat2db-timeplus",
+        "commons-codec",
+        "ehcache",
+        "mybatis-plus",
+        "okhttp"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-domain/chat2db-server-domain-core/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-server-domain/chat2db-server-domain-repository/pom.xml",
+      "language": "Java",
+      "dependency_count": 8,
+      "dependencies": [
+        "HikariCP",
+        "chat2db-server-domain",
+        "chat2db-server-domain-repository",
+        "chat2db-server-tools-common",
+        "flyway-core",
+        "flyway-mysql",
+        "h2",
+        "mybatis-plus"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-server-domain/chat2db-server-domain-repository/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-clickhouse/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-clickhouse",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-clickhouse/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-db2/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-db2",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-db2/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-dm/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-dm",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-dm/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-h2/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-h2",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-h2/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-hive/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-hive",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-hive/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-kingbase/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-kingbase",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-kingbase/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-mariadb/pom.xml",
+      "language": "Java",
+      "dependency_count": 4,
+      "dependencies": [
+        "chat2db-mariadb",
+        "chat2db-mysql",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-mariadb/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-mongodb/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-mongodb",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-mongodb/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-mysql/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-mysql",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-mysql/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-oceanbase/pom.xml",
+      "language": "Java",
+      "dependency_count": 4,
+      "dependencies": [
+        "chat2db-mysql",
+        "chat2db-oceanbase",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-oceanbase/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-oracle/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-oracle",
+        "chat2db-plugins",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-oracle/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-postgresql/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-postgresql",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-postgresql/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-presto/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-presto",
+        "chat2db-spi"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-presto/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-sqlite/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-spi",
+        "chat2db-sqlite"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-sqlite/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-sqlserver/pom.xml",
+      "language": "Java",
+      "dependency_count": 4,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-spi",
+        "chat2db-sqlserver",
+        "mssql-jdbc"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-sqlserver/pom.xml"
+    },
+    {
+      "file": "chat2db-server/chat2db-plugins/chat2db-timeplus/pom.xml",
+      "language": "Java",
+      "dependency_count": 3,
+      "dependencies": [
+        "chat2db-plugins",
+        "chat2db-spi",
+        "chat2db-timeplus"
+      ],
+      "source_ref": "REPO:chat2db-server/chat2db-plugins/chat2db-timeplus/pom.xml"
+    },
+    {
+      "file": "chat2db-client/src/main/package.json",
+      "language": "JavaScript",
+      "dependency_count": 6,
+      "dependencies": [
+        "electron-log",
+        "electron-store",
+        "node-machine-id",
+        "uuid",
+        "webpack",
+        "webpack-cli"
+      ],
+      "source_ref": "REPO:chat2db-client/src/main/package.json"
+    }
+  ],
+  "languages_detected": [
+    "Java",
+    "JavaScript"
+  ],
+  "frameworks_detected": [
+    "gin",
+    "react",
+    "spring",
+    "spring-boot"
+  ]
+}

@@ -1,0 +1,939 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/threat-model-output.schema.json",
+  "title": "Threat Model Output Schema",
+  "type": "object",
+  "required": [
+    "metadata",
+    "executive_summary",
+    "scope",
+    "architecture_summary",
+    "threats",
+    "action_items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": [
+        "system_name",
+        "generated_at",
+        "schema_version"
+      ],
+      "properties": {
+        "system_name": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string",
+          "default": "1.0"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generated_by": {
+          "type": "string"
+        },
+        "assessment_type": {
+          "type": "string",
+          "enum": [
+            "Full",
+            "Lightweight",
+            "Delta",
+            "Unknown"
+          ]
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "required": [
+        "overall_risk",
+        "top_risks",
+        "key_recommendations"
+      ],
+      "properties": {
+        "overall_risk": {
+          "$ref": "#/$defs/severity"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "top_risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "major_unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "included": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "architecture_summary": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "data_flows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trust_boundaries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sensitive_assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "business_workflows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/workflow"
+      },
+      "description": "Multi-step business processes (e.g. checkout, account recovery, coupon redemption), extracted separately from point-to-point data_flows so Tier 2 (business-logic/abuse-case) threat identification can reason about step order, state changes, and invariants. See SKILL.md Sec 3 (Architecture Extraction Agent) and Sec 13 (Business Logic & Abuse Case Agent). Optional: an empty/absent array means no workflow was identified or provided, not that none exists -- record that gap as an open question instead of assuming there are no multi-step processes."
+    },
+    "technology_profile": {
+      "type": "object",
+      "properties": {
+        "cloud": {
+          "type": "string"
+        },
+        "application_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Programming languages in play, named per the Checkmarx query catalog (Java, CSharp, Python, JavaScript, Go, PHP, etc.) so scripts/recommend_sast_queries.py can match them."
+        },
+        "identity": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "data_stores": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "security_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    },
+    "questionnaire_results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    },
+    "threats": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/threat"
+      }
+    },
+    "attack_paths": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attackPath"
+      }
+    },
+    "mitigations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mitigation"
+      }
+    },
+    "sast_scan_configuration": {
+      "type": "object",
+      "description": "Output of scripts/recommend_sast_queries.py, folded in as-is: per-language Checkmarx preset or fallback-query recommendations.",
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sastScanLanguageRecommendation"
+          }
+        }
+      }
+    },
+    "sast_recommendations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sast"
+      }
+    },
+    "dast_recommendations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dast"
+      }
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/actionItem"
+      }
+    },
+    "residual_risk": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/severity"
+          },
+          "accepted_by": {
+            "type": "string"
+          },
+          "review_date": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "appendix": {
+      "type": "object",
+      "properties": {
+        "graph": {
+          "type": "object"
+        },
+        "evidence_mapping": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low",
+        "Informational"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    "likelihood": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    "yesNoUnknown": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Unknown"
+      ]
+    },
+    "workflowStep": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier scoped to its workflow, e.g. 'S1', 'S2', in documented order."
+        },
+        "name": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string",
+          "description": "Graph node id (e.g. 'C-003') that performs this step."
+        },
+        "graph_edge_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "DF-### edge id(s) representing entry into this step."
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What must already be true/completed before this step may run, e.g. 'Step S2 (payment authorization) completed'."
+        },
+        "state_change": {
+          "$ref": "#/$defs/yesNoUnknown",
+          "description": "Does this step create/update/delete persistent business state (an order, balance, inventory count, entitlement)?"
+        },
+        "state_change_description": {
+          "type": "string"
+        },
+        "client_supplied_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields this step trusts as supplied by the client rather than deriving/re-validating server-side (e.g. 'price', 'quantity', 'discount_pct', 'status'). The single highest-value field for business-logic review -- see references/questionnaires/business-logic.yaml."
+        },
+        "authorization_check": {
+          "$ref": "#/$defs/yesNoUnknown",
+          "description": "Is ownership/authorization independently re-verified at this step, rather than inherited/assumed from an earlier step?"
+        },
+        "idempotency_required": {
+          "$ref": "#/$defs/yesNoUnknown"
+        },
+        "reversible": {
+          "$ref": "#/$defs/yesNoUnknown",
+          "description": "Can this step's effect be undone/compensated after the fact?"
+        },
+        "rate_limited": {
+          "$ref": "#/$defs/yesNoUnknown"
+        },
+        "confirms_or_reviews": {
+          "$ref": "#/$defs/yesNoUnknown",
+          "description": "Is this step itself a human confirmation/review gate (e.g. 'review order before placing')?"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "workflowInvariant": {
+      "type": "object",
+      "required": [
+        "id",
+        "statement"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^INV-[0-9]{3,}$"
+        },
+        "statement": {
+          "type": "string",
+          "description": "A business rule the workflow must always hold, e.g. 'An order cannot transition to Shipped before Payment is Captured.'"
+        },
+        "enforced_by_step": {
+          "type": "string",
+          "description": "Step id (scoped within this workflow) that is supposed to enforce this invariant, or 'Unknown' if no step was identified as doing so -- scripts/analyze_workflows.py flags the latter case."
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^BP-[0-9]{3,}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "initiating_actor": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workflowStep"
+          }
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workflowInvariant"
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": [
+        "id",
+        "question",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Answered",
+            "Partially answered",
+            "Unanswered",
+            "Not applicable"
+          ]
+        },
+        "risk_if_unknown": {
+          "$ref": "#/$defs/severity"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "threat": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "confidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^T-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "stride": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Spoofing",
+              "Tampering",
+              "Repudiation",
+              "Information Disclosure",
+              "Denial of Service",
+              "Elevation of Privilege"
+            ]
+          }
+        },
+        "owasp": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cwe": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "CWE IDs behind this threat (e.g. 'CWE-89'), used by scripts/recommend_sast_queries.py to match Checkmarx queries/presets."
+        },
+        "capec": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "CAPEC attack-pattern IDs for this threat (e.g. 'CAPEC-1'), populated from scripts/map_attack_techniques.py's lookup against references/threat-frameworks/attack-technique-map.json -- not hand-picked."
+        },
+        "attack_techniques": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MITRE ATT&CK technique IDs for this threat (e.g. 'T1190 Exploit Public-Facing Application'), from scripts/map_attack_techniques.py. An empty array is a valid, expected result for application-logic threats with no clean ATT&CK equivalent -- see references/threat-frameworks/mitre-attack.md."
+        },
+        "workflow_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "business_workflows[].id and/or step id(s) (e.g. 'BP-001', 'BP-001/S3') this threat was derived from. Present on Tier 2 (business-logic/abuse-case) threats; see Sec 13 Business Logic & Abuse Case Agent."
+        },
+        "violated_invariant": {
+          "type": "string",
+          "description": "The business_workflows[].invariants[].id (e.g. 'INV-002') this threat describes a way to violate, if applicable."
+        },
+        "component": {
+          "type": "string"
+        },
+        "affected_data": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "attack_scenario": {
+          "type": "string"
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "impact": {
+          "type": "string"
+        },
+        "likelihood": {
+          "$ref": "#/$defs/likelihood"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_graph_nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_graph_edges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "attackPath": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^AP-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "entry_point": {
+          "type": "string"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_weaknesses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "attack_techniques": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MITRE ATT&CK technique IDs for the hops in this path, aggregated from scripts/map_attack_techniques.py's per-threat/per-risk-pattern results rather than guessed per hop."
+        },
+        "impact": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "recommended_controls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mitigation": {
+      "type": "object",
+      "required": [
+        "threat_id",
+        "mitigations"
+      ],
+      "properties": {
+        "threat_id": {
+          "type": "string"
+        },
+        "mitigations": {
+          "type": "object",
+          "properties": {
+            "preventive": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "detective": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "corrective": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "compensating": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sast": {
+      "type": "object",
+      "required": [
+        "id",
+        "component",
+        "focus_area",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^SAST-[0-9]{3,}$"
+        },
+        "threat_id": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "focus_area": {
+          "type": "string"
+        },
+        "scan_recommendation": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "relevant_queries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/checkmarxQuery"
+          },
+          "description": "Specific Checkmarx queries (from scripts/recommend_sast_queries.py) matching this threat's CWE(s), for this component's language."
+        }
+      }
+    },
+    "dast": {
+      "type": "object",
+      "required": [
+        "id",
+        "component",
+        "test_name",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^DAST-[0-9]{3,}$"
+        },
+        "threat_id": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "test_name": {
+          "type": "string"
+        },
+        "test_objective": {
+          "type": "string"
+        },
+        "high_level_steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expected_secure_behavior": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "safety_note": {
+          "type": "string"
+        }
+      }
+    },
+    "actionItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^A-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "mapped_threats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "owner": {
+          "type": "string",
+          "default": "Unknown"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "recommended_due": {
+          "type": "string"
+        },
+        "validation": {
+          "type": "string"
+        }
+      }
+    },
+    "checkmarxQuery": {
+      "type": "object",
+      "required": [
+        "package",
+        "query_name"
+      ],
+      "properties": {
+        "package": {
+          "type": "string"
+        },
+        "query_name": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "cwe": {
+          "type": "string"
+        }
+      }
+    },
+    "sastScanLanguageRecommendation": {
+      "type": "object",
+      "required": [
+        "language",
+        "mode"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "preset",
+            "fallback_queries"
+          ]
+        },
+        "recommended_preset": {
+          "type": "string"
+        },
+        "coverage_pct": {
+          "type": "number"
+        },
+        "covered_cwes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gap_cwes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supplemental_queries_for_gaps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/checkmarxQuery"
+          }
+        },
+        "fallback_queries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/checkmarxQuery"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+# Business Logic & Workflow Abuse Questionnaire
+# Cross-cutting: load for every assessment regardless of technology domain
+# (unlike cloud.yaml/web.yaml/mobile.yaml/api.yaml, which are selected by
+# technology_profile). Targets risks that live in the sequence and intent
+# of multi-step processes rather than in any single component or line of
+# code -- the class of finding SAST/DAST/SCA tooling structurally cannot
+# find, because each individual request is syntactically valid.
+# Pairs with SKILL.md Sec 3 (business_workflows extraction), Sec 13
+# (Business Logic & Abuse Case Agent), and scripts/analyze_workflows.py.
+
+- id: BIZ-SEC-001
+  question: "List the multi-step business processes this system implements (e.g. checkout, account recovery, onboarding/KYC, coupon or referral redemption, refund/dispute, subscription upgrade/downgrade, loan or claim approval)."
+  intent: "Establish the business_workflows inventory. A process not listed here cannot be analyzed for sequence-dependent risk -- treat an empty answer as a gap to flag, not as evidence no such process exists."
+
+- id: BIZ-SEC-002
+  question: "For each process above, can any step be invoked directly (via its own API call) without having completed the steps before it?"
+  intent: "Workflow-step-skipping is the single most common business-logic flaw: an attacker who knows or guesses the next endpoint bypasses a precondition the UI silently enforced. Confirms server-side state-machine enforcement rather than UI-only sequencing."
+
+- id: BIZ-SEC-003
+  question: "Which fields does the server trust as supplied by the client within these processes (price, quantity, discount/coupon value, shipping cost, currency, role/tier, workflow-instance or step-completion status) versus deriving/re-validating them server-side from its own authoritative state?"
+  intent: "Client-supplied business-critical fields are the core of price/parameter tampering and fake-completion attacks. Populates workflowStep.client_supplied_fields for scripts/analyze_workflows.py."
+
+- id: BIZ-SEC-004
+  question: "For any step that changes money, inventory, credits, or entitlements, what prevents the same request from being processed twice (duplicate submission, network retry, replay, or two parallel requests racing each other)?"
+  intent: "Missing idempotency/locking on a state-changing step enables double-spend, double-refund, and inventory oversell via a race condition rather than any single malformed request a scanner could flag."
+
+- id: BIZ-SEC-005
+  question: "Which steps in these processes are irreversible (cannot be undone or compensated after the fact), and is there a confirmation/review step immediately before each one?"
+  intent: "An irreversible action reachable by a single request with no review gate turns an input-validation gap or automation script into a permanent, unrecoverable business impact."
+
+- id: BIZ-SEC-006
+  question: "Which of these processes could be invoked repeatedly, in bulk, or by automation using otherwise-valid credentials (e.g. coupon redemption, account creation, referral signup, price/quote requests, review/rating submission)? What abuse-detection or rate-limiting controls exist specifically for these flows, separate from generic API rate limiting?"
+  intent: "Abuse of legitimate functionality at scale (scalping, coupon stacking, referral fraud, fake reviews, inventory holding) is invisible to SAST/DAST because every individual call is valid; it only shows up as a volume/sequence pattern."
+
+- id: BIZ-SEC-007
+  question: "If one of these processes fails partway through (e.g. payment declines after inventory is reserved, or a downstream service times out after a record is partially created), what compensating action runs, and can a user or attacker trigger that partial-failure state on purpose?"
+  intent: "Missing rollback/compensation logic lets an attacker deliberately abandon a process mid-way to hold a resource (inventory, a rate-limited slot, a promotional allocation) without ever completing it."
+
+- id: BIZ-SEC-008
+  question: "Which steps finalize business state based on an asynchronous external callback or webhook (payment confirmation, identity verification result, shipping provider update)? How is the callback's authenticity verified, and is the resulting state change cross-checked against the external provider's own source-of-truth API rather than trusted from the callback payload alone?"
+  intent: "An unverified or unconfirmed webhook that finalizes state (e.g. marks an order paid) can be forged or replayed to produce a business outcome without the underlying event actually occurring."
+
+- id: BIZ-SEC-009
+  question: "For each declared business rule/invariant (e.g. 'an order cannot ship before payment is captured', 'a coupon can only be redeemed once per account', 'a refund cannot exceed the original payment amount'), which specific component or step is responsible for enforcing it server-side?"
+  intent: "A documented business rule with no identified enforcement point is a stated intention, not a control -- this question forces that gap to surface explicitly rather than being assumed to be 'handled somewhere.'"
+
+- id: BIZ-SEC-010
+  question: "Within a single workflow instance (a specific order, application, ticket, or claim), what prevents one authenticated user from acting on another user's in-progress instance by guessing or enumerating its identifier at a mid-process step?"
+  intent: "Ownership/ authorization is often checked only at the entry point of a multi-step process and assumed (not re-verified) at later steps -- a workflow-scoped variant of IDOR/BOLA that a single-endpoint authorization test will miss."
+
+- id: BIZ-SEC-011
+  question: "Where a value is checked once early in a process and used later (a quoted price, a promo's validity/expiry, an inventory count, an exchange rate, a risk/fraud score), is it re-validated at the point of use, or only at the point it was first read?"
+  intent: "Time-of-check-to-time-of-use (TOCTOU) gaps on business data let an attacker lock in a stale, more favorable value (an expired promo, an old lower price) by delaying the later step."
+
+- id: BIZ-SEC-012
+  question: "Do any of these processes allow negative, zero, or excessively large values where only positive/bounded values make business sense (negative quantity, negative payment amount, discount greater than 100%, transferring more than an available balance)?"
+  intent: "Boundary/sign abuse on business quantities (e.g. a negative-quantity 'return' that credits an account) is a logic flaw invisible to type-level input validation, since the value is a syntactically valid number."
+
+- id: BIZ-SEC-013
+  question: "Can a user or workflow be moved into an invalid state transition (e.g. cancelling an already-shipped order, approving an already-rejected application, downgrading a subscription mid-billing-cycle to dodge a charge)?"
+  intent: "Confirms a real state machine is enforced server-side (valid transitions only) rather than each endpoint independently accepting any state change it receives."
+
+- id: BIZ-SEC-014
+  question: "For processes involving money or allocated resources (payments, refunds, inventory, seats/slots, rate-limited quotas), is there a periodic reconciliation against an independent source of truth (ledger, inventory system, payment provider) that would catch a successful logic-abuse attempt after the fact?"
+  intent: "Business-logic abuse often cannot be fully prevented by design; a detective control (reconciliation, anomaly alerting) is the compensating control when preventive controls have gaps -- confirms one exists rather than assuming prevention alone is sufficient."

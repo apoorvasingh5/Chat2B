@@ -1,0 +1,471 @@
+{
+  "metadata": {
+    "system_name": "Mobile Banking Platform",
+    "schema_version": "1.0",
+    "generated_at": "2026-08-10T00:00:00Z",
+    "generated_by": "Threat Modelling (worked example)",
+    "assessment_type": "Full"
+  },
+  "executive_summary": {
+    "overall_risk": "Critical",
+    "summary": "The platform's primary path (Mobile App -> API Gateway -> Account API -> Account Database) is reasonably controlled, but a legacy offline-sync path lets the mobile app write directly to the Account Database with no documented authentication, authorization, or encryption, bypassing the API Gateway entirely. Object-level authorization on the Account API and the security posture of the Admin Portal are also undocumented.",
+    "top_risks": [
+      "Legacy mobile-to-database sync path bypasses the API Gateway and has no documented authentication, authorization, or encryption.",
+      "Account API authorization model is undocumented; object-level authorization (BOLA) cannot be confirmed.",
+      "Notification Service (third party) receives customer PII via a call with undocumented authentication."
+    ],
+    "key_recommendations": [
+      "Retire the legacy mobile-to-database sync path, or route it through the API Gateway with the same authentication/authorization controls as the primary path.",
+      "Confirm and, if missing, implement server-side object-level authorization in the Account API.",
+      "Document and restrict Admin Portal network exposure to an admin-only network segment."
+    ],
+    "major_unknowns": [
+      "Account API object-level authorization model.",
+      "Admin Portal network exposure.",
+      "Authentication used for the Account API -> Notification Service webhook call."
+    ]
+  },
+  "scope": {
+    "included": [
+      "Mobile Banking Platform: Mobile App, API Gateway, Account API, Account Database, Notification Service, Admin Portal"
+    ],
+    "excluded": [],
+    "assumptions": [
+      "The API Gateway terminates TLS and forwards over HTTPS internally.",
+      "Admin Portal network exposure is not documented and is treated as unconfirmed."
+    ],
+    "input_artifacts": ["examples/sample-architecture.md (SRC-001)"]
+  },
+  "architecture_summary": {
+    "components": [
+      "Mobile App", "API Gateway", "Account API", "Account Database",
+      "Notification Service", "Admin Portal"
+    ],
+    "data_flows": [
+      "Mobile App -> API Gateway (CALLS, HTTPS, OAuth2)",
+      "API Gateway -> Account API (CALLS, HTTPS)",
+      "Account API -> Account Database (READS_FROM, SQL)",
+      "Mobile App -> Account Database (WRITES_TO, legacy offline sync)",
+      "Account API -> Notification Service (SENDS_DATA_TO, HTTPS webhook)",
+      "Admin Portal -> Account Database (ADMINISTERS, HTTPS)"
+    ],
+    "trust_boundaries": ["Internet to DMZ", "DMZ to Internal Network"],
+    "sensitive_assets": ["Account Database (Customer PII, Account Balance)"]
+  },
+  "technology_profile": {
+    "cloud": "Unknown",
+    "application_types": ["mobile", "web", "api"],
+    "languages": ["Java"],
+    "identity": ["OAuth2"],
+    "data_stores": ["SQL"],
+    "security_domains": ["web", "api", "mobile"]
+  },
+  "open_questions": [
+    {
+      "id": "Q-001",
+      "domain": "api",
+      "question": "Does the Account API enforce object-level authorization on every account lookup, or does it rely solely on the API Gateway's OAuth2 token?",
+      "applies_to": ["Account API"],
+      "status": "Unanswered",
+      "risk_if_unknown": "Critical",
+      "reason": "Account API handles customer-owned financial data and sits behind a single OAuth2 check at the gateway."
+    },
+    {
+      "id": "Q-002",
+      "domain": "web",
+      "question": "Is the Admin Portal restricted to a dedicated admin network segment, or reachable from the general corporate network?",
+      "applies_to": ["Admin Portal"],
+      "status": "Unanswered",
+      "risk_if_unknown": "High",
+      "reason": "Admin Portal administers the Account Database and its network exposure is undocumented."
+    },
+    {
+      "id": "Q-003",
+      "domain": "api",
+      "question": "What authentication (if any) protects the legacy mobile-to-database offline sync path?",
+      "applies_to": ["Mobile App", "Account Database"],
+      "status": "Unanswered",
+      "risk_if_unknown": "Critical",
+      "reason": "This path writes directly to the database bypassing the API Gateway and Account API entirely."
+    }
+  ],
+  "questionnaire_results": [
+    {
+      "id": "API-SEC-006",
+      "domain": "api",
+      "question": "Is object-level authorization enforced server-side for every operation that accesses a user-owned or tenant-owned resource?",
+      "applies_to": ["Account API"],
+      "status": "Unanswered",
+      "risk_if_unknown": "Critical",
+      "reason": "No evidence of object-level authorization enforcement was found in the reviewed architecture document.",
+      "evidence": []
+    },
+    {
+      "id": "WEB-SEC-016",
+      "domain": "web",
+      "question": "What kind of authorization does the application implement (RBAC, ABAC, Permission based AC, Location, etc.)?",
+      "applies_to": ["Account API", "Admin Portal"],
+      "status": "Unanswered",
+      "risk_if_unknown": "High",
+      "reason": "No authorization model was documented for either component.",
+      "evidence": []
+    }
+  ],
+  "threats": [
+    {
+      "id": "T-001",
+      "title": "Undocumented object-level authorization in Account API",
+      "category": "Authorization",
+      "stride": ["Elevation of Privilege", "Information Disclosure"],
+      "owasp": ["API1:2023 Broken Object Level Authorization"],
+      "cwe": ["CWE-862"],
+      "component": "Account API",
+      "affected_data": ["Customer PII", "Account Balance"],
+      "attack_scenario": "An authenticated mobile user manipulates an account identifier to view or modify another customer's balance or transaction history, if the Account API relies only on the API Gateway's authentication and does not independently verify resource ownership.",
+      "preconditions": [
+        "Account API exposes account-identifier-based operations",
+        "Object-level authorization is undocumented at the Account API layer"
+      ],
+      "impact": "Unauthorized access to another customer's financial data.",
+      "likelihood": "Medium",
+      "severity": "Critical",
+      "confidence": "Medium",
+      "evidence": ["Known Gaps section of architecture.md flags this as an open TODO"],
+      "assumptions": ["API Gateway performs authentication only, not object-level authorization"],
+      "related_questions": ["Q-001", "API-SEC-006"],
+      "related_graph_nodes": ["C-002", "C-003"],
+      "related_graph_edges": ["DF-002"]
+    },
+    {
+      "id": "T-002",
+      "title": "Legacy mobile-to-database sync path bypasses API layer",
+      "category": "Access Control",
+      "stride": ["Spoofing", "Tampering", "Elevation of Privilege"],
+      "owasp": ["A01:2025 Broken Access Control"],
+      "cwe": ["CWE-306"],
+      "component": "Account Database",
+      "affected_data": ["Customer PII", "Account Balance"],
+      "attack_scenario": "The mobile app writes directly to the Account Database for offline sync, bypassing the API Gateway and Account API. If the mobile client embeds direct database credentials or an unauthenticated path, any compromise of the app or its traffic grants direct write access to account data.",
+      "preconditions": [
+        "Mobile app has network-reachable direct access to the Account Database",
+        "No confirmed authentication, authorization, or encryption on this path"
+      ],
+      "impact": "Unauthorized read/write access to customer financial data, potentially bypassing all API-layer controls.",
+      "likelihood": "High",
+      "severity": "Critical",
+      "confidence": "Medium",
+      "evidence": ["Overview and Known Gaps sections of architecture.md; Mermaid diagram shows a direct Mobile App -> Account Database edge"],
+      "assumptions": [],
+      "related_questions": ["Q-003"],
+      "related_graph_nodes": ["C-001", "C-004"],
+      "related_graph_edges": ["DF-004"]
+    },
+    {
+      "id": "T-003",
+      "title": "Customer PII sent to third-party Notification Service without confirmed authentication",
+      "category": "Data Protection",
+      "stride": ["Information Disclosure", "Spoofing"],
+      "owasp": ["A02:2025 Security Misconfiguration"],
+      "component": "Notification Service",
+      "affected_data": ["Customer PII"],
+      "attack_scenario": "The Account API calls the Notification Service webhook with customer name, phone number, and transaction amount. Without confirmed request authentication, a spoofed or intercepted call path could disclose or inject notification data.",
+      "preconditions": [
+        "Webhook call authentication is undocumented",
+        "Call crosses a trust boundary to an external third party"
+      ],
+      "impact": "Disclosure of customer PII to an unauthenticated party, or injected fraudulent notifications.",
+      "likelihood": "Medium",
+      "severity": "High",
+      "confidence": "Medium",
+      "evidence": ["Third-Party Integrations section of architecture.md"],
+      "assumptions": [],
+      "related_questions": [],
+      "related_graph_nodes": ["C-003", "C-005"],
+      "related_graph_edges": ["DF-005"]
+    }
+  ],
+  "attack_paths": [
+    {
+      "id": "AP-001",
+      "title": "External attacker abuses the legacy sync path to reach account data directly",
+      "entry_point": "Mobile App",
+      "path": ["External User", "Mobile App", "Account Database"],
+      "required_weaknesses": [
+        "Legacy sync path has no confirmed authentication or authorization",
+        "Path bypasses API Gateway and Account API controls entirely"
+      ],
+      "impact": "Direct unauthorized read/write access to customer account data.",
+      "severity": "Critical",
+      "recommended_controls": [
+        "Retire the legacy sync path or route it through the API Gateway",
+        "Require the same authentication/authorization on this path as the primary API path"
+      ]
+    }
+  ],
+  "mitigations": [
+    {
+      "threat_id": "T-001",
+      "mitigations": {
+        "preventive": [
+          "Enforce server-side object-level authorization on every Account API operation that accepts an account or customer identifier.",
+          "Use centralized authorization middleware rather than per-endpoint checks."
+        ],
+        "detective": [
+          "Log and alert on denied authorization attempts and identifier-enumeration patterns."
+        ],
+        "corrective": [
+          "Revoke affected sessions and audit access logs if unauthorized access is confirmed."
+        ],
+        "compensating": [
+          "Add API Gateway-level checks restricting callers to their own account identifiers while the Account API fix is implemented."
+        ]
+      }
+    },
+    {
+      "threat_id": "T-002",
+      "mitigations": {
+        "preventive": [
+          "Retire the legacy mobile-to-database sync path.",
+          "If it must remain, route it through the API Gateway and Account API with the same authentication, authorization, and TLS requirements as the primary path."
+        ],
+        "detective": [
+          "Alert on any direct network connection from mobile IP ranges to the Account Database."
+        ],
+        "corrective": [
+          "Rotate any credentials used by the legacy sync path immediately if it is found to be unauthenticated."
+        ],
+        "compensating": [
+          "Restrict Account Database network access to only the Account API's service identity as an interim control."
+        ]
+      }
+    },
+    {
+      "threat_id": "T-003",
+      "mitigations": {
+        "preventive": [
+          "Authenticate the Account API -> Notification Service webhook call (e.g., signed requests or mutual TLS)."
+        ],
+        "detective": [
+          "Monitor and alert on webhook call failures or unexpected volume."
+        ],
+        "corrective": [],
+        "compensating": [
+          "Minimize the customer data fields sent to the Notification Service to only what is strictly required."
+        ]
+      }
+    }
+  ],
+  "sast_scan_configuration": {
+    "languages": ["Java"],
+    "recommendations": [
+      {
+        "language": "Java",
+        "mode": "fallback_queries",
+        "reason": "No preset reaches the 60.0% coverage threshold for the requested CWEs in Java (best was 'All' at 50.0%): CWE-306 (missing authentication) has zero matching Java queries in the Checkmarx catalog, so no preset can cover it.",
+        "fallback_queries": [
+          {"package": "Java_Spring", "query_name": "Spring_Missing_Function_Level_Authorization", "severity": "Low", "cwe": "862"},
+          {"package": "Java_Spring", "query_name": "Spring_Missing_Object_Level_Authorization", "severity": "Information", "cwe": "862"}
+        ],
+        "top_presets_considered": [
+          {"preset": "All", "coverage_pct": 50.0, "covered_cwes": ["862"], "query_count": 2},
+          {"preset": "CWE top 25", "coverage_pct": 50.0, "covered_cwes": ["862"], "query_count": 1}
+        ]
+      }
+    ]
+  },
+  "sast_recommendations": [
+    {
+      "id": "SAST-001",
+      "threat_id": "T-001",
+      "component": "Account API",
+      "focus_area": "Broken object-level authorization",
+      "scan_recommendation": "Scan Account API controller/handler methods that accept an account or customer identifier for missing ownership/authorization checks before data access.",
+      "priority": "P0",
+      "relevant_queries": [
+        {"package": "Java_Spring", "query_name": "Spring_Missing_Function_Level_Authorization", "severity": "Low", "cwe": "862"},
+        {"package": "Java_Spring", "query_name": "Spring_Missing_Object_Level_Authorization", "severity": "Information", "cwe": "862"}
+      ]
+    },
+    {
+      "id": "SAST-002",
+      "threat_id": "T-002",
+      "component": "Mobile App",
+      "focus_area": "Hardcoded credentials / direct database access from a client",
+      "scan_recommendation": "Scan the mobile app codebase for embedded database connection strings, credentials, or direct DB client libraries.",
+      "priority": "P0"
+    },
+    {
+      "id": "SAST-003",
+      "threat_id": "T-003",
+      "component": "Account API",
+      "focus_area": "Outbound webhook call authentication",
+      "scan_recommendation": "Review the Notification Service webhook client code for signed-request or mutual-TLS authentication and for the specific fields transmitted.",
+      "priority": "P1"
+    }
+  ],
+  "dast_recommendations": [
+    {
+      "id": "DAST-001",
+      "threat_id": "T-001",
+      "component": "Account API",
+      "test_name": "BOLA/IDOR testing for account resources",
+      "test_objective": "Verify that an authenticated user cannot access another user's account or transaction data by modifying object identifiers.",
+      "high_level_steps": [
+        "Authenticate as Test User A and capture valid account resource requests.",
+        "Authenticate as Test User B and attempt to access User A's resources by changing identifiers.",
+        "Attempt safe enumeration of account identifiers within approved test data."
+      ],
+      "expected_secure_behavior": "The API denies cross-account access without revealing whether the target identifier exists.",
+      "priority": "P0",
+      "safety_note": "Run only against an authorized test environment or approved production-safe test accounts."
+    },
+    {
+      "id": "DAST-002",
+      "threat_id": "T-002",
+      "component": "Account Database",
+      "test_name": "Legacy sync path authentication check",
+      "test_objective": "Confirm the legacy mobile-to-database sync path requires authentication and rejects unauthenticated or replayed requests.",
+      "high_level_steps": [
+        "Identify the network path/protocol used by the legacy sync feature in a test environment.",
+        "Attempt a sync request without valid credentials/session.",
+        "Attempt a sync request replaying a captured request from a different test account."
+      ],
+      "expected_secure_behavior": "Unauthenticated or replayed sync requests are rejected.",
+      "priority": "P0",
+      "safety_note": "Test only in an authorized non-production environment with test accounts and test data."
+    },
+    {
+      "id": "DAST-003",
+      "threat_id": "T-003",
+      "component": "Notification Service",
+      "test_name": "Webhook call authentication and data minimization check",
+      "test_objective": "Confirm the Notification Service webhook call is authenticated and does not transmit more customer data than necessary.",
+      "high_level_steps": [
+        "Capture a live webhook call in an authorized test environment.",
+        "Verify presence and validity of request signing or mutual-TLS authentication.",
+        "Review the payload fields against the documented minimum necessary data."
+      ],
+      "expected_secure_behavior": "The webhook call is authenticated and transmits only the minimum necessary customer data.",
+      "priority": "P1",
+      "safety_note": "Use test/sandbox third-party endpoints where available; avoid sending real customer data during testing."
+    }
+  ],
+  "action_items": [
+    {
+      "id": "A-001",
+      "title": "Implement server-side object-level authorization in Account API",
+      "description": "Ensure every Account API operation validates that the caller owns or is delegated access to the requested account/customer resource.",
+      "mapped_threats": ["T-001"],
+      "owner": "Unknown",
+      "priority": "P0",
+      "recommended_due": "Before next production release",
+      "validation": "DAST-001 passes and code review confirms centralized, server-side authorization enforcement."
+    },
+    {
+      "id": "A-002",
+      "title": "Retire or re-secure the legacy mobile-to-database sync path",
+      "description": "Route the offline sync path through the API Gateway and Account API with equivalent authentication, authorization, and encryption, or remove it.",
+      "mapped_threats": ["T-002"],
+      "owner": "Unknown",
+      "priority": "P0",
+      "recommended_due": "Immediate",
+      "validation": "DAST-002 passes and network review confirms the Account Database no longer accepts unauthenticated direct connections."
+    },
+    {
+      "id": "A-003",
+      "title": "Authenticate and minimize data in the Notification Service webhook call",
+      "description": "Add signed-request or mutual-TLS authentication to the webhook call and reduce transmitted fields to the minimum necessary.",
+      "mapped_threats": ["T-003"],
+      "owner": "Unknown",
+      "priority": "P1",
+      "recommended_due": "Next planned security backlog cycle",
+      "validation": "DAST-003 confirms authenticated calls and minimized payload."
+    }
+  ],
+  "residual_risk": [
+    {
+      "id": "RR-001",
+      "description": "Admin Portal network exposure remains undocumented pending confirmation from the infrastructure team; treated as an accepted, time-boxed risk.",
+      "severity": "Medium",
+      "accepted_by": "Unknown",
+      "review_date": "2026-09-10"
+    }
+  ],
+  "appendix": {
+    "graph": {
+      "metadata": {
+        "system_name": "Mobile Banking Platform",
+        "schema_version": "1.0",
+        "generated_at": "2026-08-10T00:00:00Z",
+        "generated_by": "Threat Modelling/build_graph.py",
+        "scope": "Illustrative excerpt only - run build_graph.py for the full graph.",
+        "source_artifacts": [
+          {"id": "SRC-001", "name": "sample-architecture.md", "type": "markdown", "location": "examples/sample-architecture.md"}
+        ]
+      },
+      "nodes": [
+        {
+          "id": "C-002", "name": "API Gateway", "type": "APIGateway",
+          "description": "Single internet-facing entry point that fronts the Account API.",
+          "technology": "Kong", "owner": "Unknown", "environment": "Production",
+          "internet_exposed": "Yes", "authentication": "OAuth2", "authorization": "Unknown",
+          "data_classification": [], "trust_zone": "DMZ", "tags": [], "source_refs": [],
+          "confidence": "High", "assumptions": []
+        },
+        {
+          "id": "C-003", "name": "Account API", "type": "API",
+          "description": "Internal service handling account balance and transfer operations.",
+          "technology": "Java / Spring Boot", "owner": "Unknown", "environment": "Production",
+          "internet_exposed": "No", "authentication": "Unknown", "authorization": "Unknown",
+          "data_classification": [], "trust_zone": "Internal", "tags": [], "source_refs": [],
+          "confidence": "Medium", "assumptions": ["Authorization model for object-level access is not documented."]
+        },
+        {
+          "id": "C-004", "name": "Account Database", "type": "Database",
+          "description": "Stores customer account balances and PII.",
+          "technology": "PostgreSQL", "owner": "Unknown", "environment": "Production",
+          "internet_exposed": "No", "authentication": "Unknown", "authorization": "Unknown",
+          "data_classification": ["Customer PII", "Account Balance"], "trust_zone": "Internal",
+          "tags": [], "source_refs": [], "confidence": "High", "assumptions": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "DF-002", "from": "C-002", "to": "C-003", "relationship": "CALLS",
+          "protocol": "HTTPS", "port": "Unknown", "authentication": "Unknown", "authorization": "Unknown",
+          "data_classification": [], "crosses_trust_boundary": "No", "encryption_in_transit": "Yes",
+          "source_refs": [], "confidence": "High", "assumptions": []
+        },
+        {
+          "id": "DF-003", "from": "C-003", "to": "C-004", "relationship": "READS_FROM",
+          "protocol": "SQL", "port": "Unknown", "authentication": "Unknown", "authorization": "Unknown",
+          "data_classification": ["Customer PII", "Account Balance"], "crosses_trust_boundary": "No",
+          "encryption_in_transit": "Unknown", "source_refs": [], "confidence": "High", "assumptions": []
+        }
+      ],
+      "risk_patterns": [
+        {
+          "id": "GRP-001",
+          "title": "Internet-exposed 'API Gateway' can reach data store 'Account Database'",
+          "description": "'API Gateway' is marked internet-exposed and a forward data-flow path reaches 'Account Database' (Database) within 2 hop(s).",
+          "severity": "Critical",
+          "graph_refs": {"nodes": ["C-002", "C-003", "C-004"], "edges": ["DF-002", "DF-003"]},
+          "evidence": ["node C-002 internet_exposed=Yes", "reachable target C-004"]
+        },
+        {
+          "id": "GRP-003",
+          "title": "Authorization undocumented on call into 'Account API'",
+          "description": "The call from 'API Gateway' to 'Account API' has no documented authorization model.",
+          "severity": "High",
+          "graph_refs": {"nodes": ["C-002", "C-003"], "edges": ["DF-002"]},
+          "evidence": ["edge DF-002 authorization=Unknown, target type=API"]
+        }
+      ]
+    },
+    "evidence_mapping": [
+      "SRC-001 section 'Known Gaps' -> T-001, T-002 (documented TODO/assumption lines)",
+      "SRC-001 Mermaid diagram in 'Data Flow' -> DF-001..DF-006 and the graph nodes/edges above",
+      "SRC-001 section 'Third-Party Integrations' -> T-003"
+    ]
+  }
+}
